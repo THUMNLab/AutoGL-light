@@ -6,7 +6,7 @@ import random
 import numpy as np
 from autogllight.utils import *
 from autogllight.nas.space import SinglePathNodeClassificationSpace
-from autogllight.nas.algorithm import RandomSearch, Darts
+from autogllight.nas.algorithm import RandomSearch, Darts, RL, GraphNasRL
 from autogllight.nas.estimator import OneShotEstimator
 from torch_geometric.datasets import Planetoid
 from os import path as osp
@@ -32,10 +32,42 @@ if __name__ == "__main__":
     # estimator = OneShotEstimator()
     # algo.search(space, dataset, estimator)
 
+    # space = SinglePathNodeClassificationSpace(
+    #     input_dim=input_dim, output_dim=num_classes
+    # )
+    # space.instantiate()
+    # algo = Darts(num_epochs=100)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
+    # space = SinglePathNodeClassificationSpace(
+    #     input_dim=input_dim, output_dim=num_classes
+    # )
+    # space.instantiate()
+    # algo = RL(num_epochs=2, ctrl_steps_aggregate=2, weight_share = True)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
+    # space = SinglePathNodeClassificationSpace(
+    #     input_dim=input_dim, output_dim=num_classes
+    # )
+    # space.instantiate()
+    # algo = RL(num_epochs=2, ctrl_steps_aggregate=2, weight_share = False)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
+    # space = SinglePathNodeClassificationSpace(
+    #     input_dim=input_dim, output_dim=num_classes
+    # )
+    # space.instantiate()
+    # algo = GraphNasRL(num_epochs=2, ctrl_steps_aggregate=2, weight_share = True)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
     space = SinglePathNodeClassificationSpace(
         input_dim=input_dim, output_dim=num_classes
     )
     space.instantiate()
-    algo = Darts(num_epochs=100)
+    algo = GraphNasRL(num_epochs=2, ctrl_steps_aggregate=2, weight_share=False)
     estimator = OneShotEstimator()
     algo.search(space, dataset, estimator)
