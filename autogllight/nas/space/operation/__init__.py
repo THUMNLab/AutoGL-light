@@ -21,7 +21,7 @@ def act_map(act):
     else:
         raise Exception("wrong activate function")
 
-from ...utils.backend.op import *
+from autogllight.utils.backend import is_dgl
 if is_dgl():
     from .operation_dgl import gnn_map,GeoLayer
 else:
