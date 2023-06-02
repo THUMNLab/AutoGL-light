@@ -8,6 +8,7 @@ import time
 import numpy as np
 import torch
 
+
 def get_hardware_aware_metric(model, hardware_metric):
     """
     Get architectures' hardware-aware metrics
@@ -20,17 +21,20 @@ def get_hardware_aware_metric(model, hardware_metric):
         The name of hardware-aware metric. Can be 'parameter' or 'latency'
     """
 
-    if hardware_metric == 'parameter':
+    if hardware_metric == "parameter":
         return count_parameters(model)
-    elif hardware_metric == 'latency':
+    elif hardware_metric == "latency":
         return measure_latency(model, 20, warmup_iters=5)
     else:
-        raise ValueError('Unsupported hardware-aware metric')
+        raise ValueError("Unsupported hardware-aware metric")
 
 
 def count_parameters(module, only_trainable=False):
-    s = sum(p.numel()
-            for p in module.parameters(recurse=False) if not only_trainable or p.requires_grad)
+    s = sum(
+        p.numel()
+        for p in module.parameters(recurse=False)
+        if not only_trainable or p.requires_grad
+    )
     if isinstance(module, PathSamplingLayerChoice):
         s += sum(count_parameters(m) for m in module.sampled_choices())
     else:
@@ -47,11 +51,11 @@ def measure_latency(model, num_iters=200, *, warmup_iters=50):
     with torch.no_grad():
         try:
             for i in range(warmup_iters + num_iters):
-                if device.type == 'cuda':
+                if device.type == "cuda":
                     torch.cuda.synchronize()
                 start = time.time()
                 model(data)
-                if device.type == 'cuda':
+                if device.type == "cuda":
                     torch.cuda.synchronize()
                 dt = time.time() - start
                 if i >= warmup_iters:
@@ -190,5 +194,3 @@ class AverageMeter:
     def summary(self):
         fmtstr = "{name}: {avg" + self.fmt + "}"
         return fmtstr.format(**self.__dict__)
-
-

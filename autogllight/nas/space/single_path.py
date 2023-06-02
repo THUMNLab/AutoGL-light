@@ -42,11 +42,18 @@ class SinglePathNodeClassificationSpace(BaseSpace):
         self.ops = ops or self.ops
         self.dropout = dropout or self.dropout
         for layer in range(self.layer_number):
-            key = f"op_{layer}" 
+            key = f"op_{layer}"
             in_dim = self.input_dim if layer == 0 else self.hidden_dim
-            out_dim = self.output_dim if layer == self.layer_number - 1 else self.hidden_dim
-            op_candidates = [op(in_dim, out_dim) if isinstance(op, type) else gnn_map(op, in_dim, out_dim) for op in self.ops]
-            self.setLayerChoice(layer, op_candidates, key = key)
+            out_dim = (
+                self.output_dim if layer == self.layer_number - 1 else self.hidden_dim
+            )
+            op_candidates = [
+                op(in_dim, out_dim)
+                if isinstance(op, type)
+                else gnn_map(op, in_dim, out_dim)
+                for op in self.ops
+            ]
+            self.setLayerChoice(layer, op_candidates, key=key)
         self._initialized = True
 
     def forward(self, data):

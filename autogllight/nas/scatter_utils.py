@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import torch
 
+
 def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
     if dim < 0:
         dim = other.dim() + dim
@@ -13,9 +14,15 @@ def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
         src = src.unsqueeze(-1)
     src = src.expand(other.size())
     return src
-def scatter_sum(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None) -> torch.Tensor:
+
+
+def scatter_sum(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> torch.Tensor:
     index = broadcast(index, src, dim)
     if out is None:
         size = list(src.size())
@@ -31,21 +38,33 @@ def scatter_sum(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
         return out.scatter_add_(dim, index, src)
 
 
-def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None) -> torch.Tensor:
+def scatter_add(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> torch.Tensor:
     return scatter_sum(src, index, dim, out, dim_size)
 
 
-def scatter_mul(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None) -> torch.Tensor:
+def scatter_mul(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> torch.Tensor:
     return torch.ops.torch_scatter.scatter_mul(src, index, dim, out, dim_size)
 
 
-def scatter_mean(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                 out: Optional[torch.Tensor] = None,
-                 dim_size: Optional[int] = None) -> torch.Tensor:
+def scatter_mean(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> torch.Tensor:
     out = scatter_sum(src, index, dim, out, dim_size)
     dim_size = out.size(dim)
 
@@ -62,27 +81,38 @@ def scatter_mean(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
     if out.is_floating_point():
         out.true_divide_(count)
     else:
-        out.div_(count, rounding_mode='floor')
+        out.div_(count, rounding_mode="floor")
     return out
 
 
 def scatter_min(
-        src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-        out: Optional[torch.Tensor] = None,
-        dim_size: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     return torch.ops.torch_scatter.scatter_min(src, index, dim, out, dim_size)
 
 
 def scatter_max(
-        src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-        out: Optional[torch.Tensor] = None,
-        dim_size: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     return torch.ops.torch_scatter.scatter_max(src, index, dim, out, dim_size)
 
 
-def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-            out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None,
-            reduce: str = "sum") -> torch.Tensor:
+def scatter(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+    reduce: str = "sum",
+) -> torch.Tensor:
     r"""
     |
     .. image:: https://raw.githubusercontent.com/rusty1s/pytorch_scatter/
@@ -138,53 +168,56 @@ def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
     .. code-block::
         torch.Size([10, 3, 64])
     """
-    if reduce == 'sum' or reduce == 'add':
+    if reduce == "sum" or reduce == "add":
         return scatter_sum(src, index, dim, out, dim_size)
-    if reduce == 'mul':
+    if reduce == "mul":
         return scatter_mul(src, index, dim, out, dim_size)
-    elif reduce == 'mean':
+    elif reduce == "mean":
         return scatter_mean(src, index, dim, out, dim_size)
-    elif reduce == 'min':
+    elif reduce == "min":
         return scatter_min(src, index, dim, out, dim_size)[0]
-    elif reduce == 'max':
+    elif reduce == "max":
         return scatter_max(src, index, dim, out, dim_size)[0]
     else:
         raise ValueError
 
 
-
-def segment_sum_csr(src: torch.Tensor, indptr: torch.Tensor,
-                    out: Optional[torch.Tensor] = None) -> torch.Tensor:
+def segment_sum_csr(
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
+) -> torch.Tensor:
     return torch.ops.torch_scatter.segment_sum_csr(src, indptr, out)
 
 
-def segment_add_csr(src: torch.Tensor, indptr: torch.Tensor,
-                    out: Optional[torch.Tensor] = None) -> torch.Tensor:
+def segment_add_csr(
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
+) -> torch.Tensor:
     return torch.ops.torch_scatter.segment_sum_csr(src, indptr, out)
 
 
-def segment_mean_csr(src: torch.Tensor, indptr: torch.Tensor,
-                     out: Optional[torch.Tensor] = None) -> torch.Tensor:
+def segment_mean_csr(
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
+) -> torch.Tensor:
     return torch.ops.torch_scatter.segment_mean_csr(src, indptr, out)
 
 
 def segment_min_csr(
-        src: torch.Tensor, indptr: torch.Tensor,
-        out: Optional[torch.Tensor] = None
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     return torch.ops.torch_scatter.segment_min_csr(src, indptr, out)
 
 
 def segment_max_csr(
-        src: torch.Tensor, indptr: torch.Tensor,
-        out: Optional[torch.Tensor] = None
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     return torch.ops.torch_scatter.segment_max_csr(src, indptr, out)
 
 
-def segment_csr(src: torch.Tensor, indptr: torch.Tensor,
-                out: Optional[torch.Tensor] = None,
-                reduce: str = "sum") -> torch.Tensor:
+def segment_csr(
+    src: torch.Tensor,
+    indptr: torch.Tensor,
+    out: Optional[torch.Tensor] = None,
+    reduce: str = "sum",
+) -> torch.Tensor:
     r"""
     Reduces all values from the :attr:`src` tensor into :attr:`out` within the
     ranges specified in the :attr:`indptr` tensor along the last dimension of
@@ -232,18 +265,19 @@ def segment_csr(src: torch.Tensor, indptr: torch.Tensor,
     .. code-block::
         torch.Size([10, 3, 64])
     """
-    if reduce == 'sum' or reduce == 'add':
+    if reduce == "sum" or reduce == "add":
         return segment_sum_csr(src, indptr, out)
-    elif reduce == 'mean':
+    elif reduce == "mean":
         return segment_mean_csr(src, indptr, out)
-    elif reduce == 'min':
+    elif reduce == "min":
         return segment_min_csr(src, indptr, out)[0]
-    elif reduce == 'max':
+    elif reduce == "max":
         return segment_max_csr(src, indptr, out)[0]
     else:
         raise ValueError
 
 
-def gather_csr(src: torch.Tensor, indptr: torch.Tensor,
-               out: Optional[torch.Tensor] = None) -> torch.Tensor:
+def gather_csr(
+    src: torch.Tensor, indptr: torch.Tensor, out: Optional[torch.Tensor] = None
+) -> torch.Tensor:
     return torch.ops.torch_scatter.gather_csr(src, indptr, out)

@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+
+
 def act_map(act):
     if act == "linear":
         return lambda x: x
@@ -21,8 +23,10 @@ def act_map(act):
     else:
         raise Exception("wrong activate function")
 
+
 from autogllight.utils.backend import is_dgl
+
 if is_dgl():
-    from .operation_dgl import gnn_map,GeoLayer
+    from .operation_dgl import gnn_map, GeoLayer
 else:
-    from .operation_pyg import gnn_map,GeoLayer
+    from .operation_pyg import gnn_map, GeoLayer

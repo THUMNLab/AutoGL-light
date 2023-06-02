@@ -26,7 +26,9 @@ class BaseMutator(nn.Module):
         self.__dict__["model"] = model
         self._structured_mutables = self._parse_search_space(self.model)
 
-    def _parse_search_space(self, module, root=None, prefix="", memo=None, nested_detection=None):
+    def _parse_search_space(
+        self, module, root=None, prefix="", memo=None, nested_detection=None
+    ):
         if memo is None:
             memo = set()
         if root is None:
@@ -35,8 +37,11 @@ class BaseMutator(nn.Module):
             memo.add(module)
             if isinstance(module, Mutable):
                 if nested_detection is not None:
-                    raise RuntimeError("Cannot have nested search space. Error at {} in {}"
-                                       .format(module, nested_detection))
+                    raise RuntimeError(
+                        "Cannot have nested search space. Error at {} in {}".format(
+                            module, nested_detection
+                        )
+                    )
                 module.name = prefix
                 module.set_mutator(self)
                 root = root.add_child(module)
@@ -44,15 +49,25 @@ class BaseMutator(nn.Module):
                     nested_detection = module
                 if isinstance(module, InputChoice):
                     for k in module.choose_from:
-                        if k != InputChoice.NO_KEY and k not in [m.key for m in memo if isinstance(m, Mutable)]:
-                            raise RuntimeError("'{}' required by '{}' not found in keys that appeared before, and is not NO_KEY."
-                                               .format(k, module.key))
+                        if k != InputChoice.NO_KEY and k not in [
+                            m.key for m in memo if isinstance(m, Mutable)
+                        ]:
+                            raise RuntimeError(
+                                "'{}' required by '{}' not found in keys that appeared before, and is not NO_KEY.".format(
+                                    k, module.key
+                                )
+                            )
             for name, submodule in module._modules.items():
                 if submodule is None:
                     continue
                 submodule_prefix = prefix + ("." if prefix else "") + name
-                self._parse_search_space(submodule, root, submodule_prefix, memo=memo,
-                                         nested_detection=nested_detection)
+                self._parse_search_space(
+                    submodule,
+                    root,
+                    submodule_prefix,
+                    memo=memo,
+                    nested_detection=nested_detection,
+                )
         return root
 
     @property
@@ -78,8 +93,10 @@ class BaseMutator(nn.Module):
 
     def __setattr__(self, name, value):
         if name == "model":
-            raise AttributeError("Attribute `model` can be set at most once, and you shouldn't use `self.model = model` to "
-                                 "include you network, as it will include all parameters in model into the mutator.")
+            raise AttributeError(
+                "Attribute `model` can be set at most once, and you shouldn't use `self.model = model` to "
+                "include you network, as it will include all parameters in model into the mutator."
+            )
         return super().__setattr__(name, value)
 
     def enter_mutable_scope(self, mutable_scope):

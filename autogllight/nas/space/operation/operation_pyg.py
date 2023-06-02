@@ -109,6 +109,7 @@ import inspect
 import sys
 from torch_scatter import scatter_add
 import torch_scatter
+
 special_args = [
     "edge_index",
     "edge_index_i",
@@ -158,6 +159,8 @@ def scatter_(name, src, index, dim_size=None):
         out[out == fill_value] = 0
 
     return out
+
+
 from torch.nn import Parameter
 from torch_geometric.nn.inits import glorot, zeros
 from torch_geometric.utils import (
@@ -166,6 +169,8 @@ from torch_geometric.utils import (
     add_remaining_self_loops,
     softmax,
 )
+
+
 class MessagePassing(torch.nn.Module):
     def __init__(self, aggr="add", flow="source_to_target"):
         super(MessagePassing, self).__init__()
@@ -275,6 +280,7 @@ class MessagePassing(torch.nn.Module):
         which was initially passed to :meth:`propagate`."""
 
         return aggr_out
+
 
 class GeoLayer(MessagePassing):
     def __init__(
@@ -446,9 +452,11 @@ class GeoLayer(MessagePassing):
             raise Exception("Wrong attention type:", self.att_type)
         return alpha
 
-    def update(self, aggr_out):# torch.Size([2708, 2, 4])
+    def update(self, aggr_out):  # torch.Size([2708, 2, 4])
         if self.concat is True:
-            aggr_out = aggr_out.view(-1, self.heads * self.out_channels) # torch.Size([2708, 8])
+            aggr_out = aggr_out.view(
+                -1, self.heads * self.out_channels
+            )  # torch.Size([2708, 8])
         else:
             aggr_out = aggr_out.mean(dim=1)
 

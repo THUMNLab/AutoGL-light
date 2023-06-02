@@ -4,6 +4,7 @@ from .base import BaseEstimator
 from autogllight.utils.evaluation import Acc
 from autogllight.utils.backend.op import *
 
+
 class OneShotEstimator(BaseEstimator):
     """
     One shot estimator.
@@ -33,7 +34,7 @@ class OneShotEstimator(BaseEstimator):
 
         loss = getattr(F, self.loss_f)(pred, y)
         probs = F.softmax(pred, dim=1).detach().cpu().numpy()
-        
+
         y = y.cpu()
         metrics = {eva: eva.evaluate(probs, y) for eva in self.evaluation}
         return metrics, loss

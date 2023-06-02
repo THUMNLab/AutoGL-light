@@ -41,7 +41,9 @@ class Mutable(nn.Module):
         if key is not None:
             if not isinstance(key, str):
                 key = str(key)
-                logger.warning("Warning: key \"%s\" is not string, converted to string.", key)
+                logger.warning(
+                    'Warning: key "%s" is not string, converted to string.', key
+                )
             self._key = key
         else:
             self._key = self.__class__.__name__ + str(global_mutable_counting())
@@ -56,8 +58,10 @@ class Mutable(nn.Module):
 
     def set_mutator(self, mutator):
         if "mutator" in self.__dict__:
-            raise RuntimeError("`set_mutator` is called more than once. Did you parse the search space multiple times? "
-                               "Or did you apply multiple fixed architectures?")
+            raise RuntimeError(
+                "`set_mutator` is called more than once. Did you parse the search space multiple times? "
+                "Or did you apply multiple fixed architectures?"
+            )
         self.__dict__["mutator"] = mutator
 
     @property
@@ -83,7 +87,10 @@ class Mutable(nn.Module):
             raise ValueError(
                 "Mutator not set for {}. You might have forgotten to initialize and apply your mutator. "
                 "Or did you initialize a mutable on the fly in forward pass? Move to `__init__` "
-                "so that trainer can locate all your mutables. See NNI docs for more details.".format(self))
+                "so that trainer can locate all your mutables. See NNI docs for more details.".format(
+                    self
+                )
+            )
 
 
 class MutableScope(Mutable):
@@ -106,6 +113,7 @@ class MutableScope(Mutable):
     key : str
         Key of mutable scope.
     """
+
     def __init__(self, key):
         super().__init__(key=key)
 
@@ -113,7 +121,7 @@ class MutableScope(Mutable):
         return True  # bypass the test because it's deprecated
 
     def __call__(self, *args, **kwargs):
-        if not hasattr(self, 'mutator'):
+        if not hasattr(self, "mutator"):
             return super().__call__(*args, **kwargs)
         warnings.warn("`MutableScope` is deprecated in Retiarii.", DeprecationWarning)
         try:
@@ -175,8 +183,14 @@ class LayerChoice(Mutable):
         self.names = []
         if isinstance(op_candidates, OrderedDict):
             for name, module in op_candidates.items():
-                assert name not in ["length", "reduction", "return_mask", "_key", "key", "names"], \
-                    "Please don't use a reserved name '{}' for your module.".format(name)
+                assert name not in [
+                    "length",
+                    "reduction",
+                    "return_mask",
+                    "_key",
+                    "key",
+                    "names",
+                ], "Please don't use a reserved name '{}' for your module.".format(name)
                 self.add_module(name, module)
                 self.names.append(name)
         elif isinstance(op_candidates, list):
@@ -184,7 +198,9 @@ class LayerChoice(Mutable):
                 self.add_module(str(i), module)
                 self.names.append(str(i))
         else:
-            raise TypeError("Unsupported op_candidates type: {}".format(type(op_candidates)))
+            raise TypeError(
+                "Unsupported op_candidates type: {}".format(type(op_candidates))
+            )
         self.reduction = reduction
         self.return_mask = return_mask
 
@@ -211,7 +227,10 @@ class LayerChoice(Mutable):
 
     @property
     def length(self):
-        warnings.warn("layer_choice.length is deprecated. Use `len(layer_choice)` instead.", DeprecationWarning)
+        warnings.warn(
+            "layer_choice.length is deprecated. Use `len(layer_choice)` instead.",
+            DeprecationWarning,
+        )
         return len(self)
 
     def __len__(self):
@@ -222,7 +241,10 @@ class LayerChoice(Mutable):
 
     @property
     def choices(self):
-        warnings.warn("layer_choice.choices is deprecated. Use `list(layer_choice)` instead.", DeprecationWarning)
+        warnings.warn(
+            "layer_choice.choices is deprecated. Use `list(layer_choice)` instead.",
+            DeprecationWarning,
+        )
         return list(self)
 
     def forward(self, *args, **kwargs):
@@ -294,20 +316,32 @@ class InputChoice(Mutable):
 
     NO_KEY = ""
 
-    def __init__(self, n_candidates=None, choose_from=None, n_chosen=None,
-                 reduction="sum", return_mask=False, key=None):
+    def __init__(
+        self,
+        n_candidates=None,
+        choose_from=None,
+        n_chosen=None,
+        reduction="sum",
+        return_mask=False,
+        key=None,
+    ):
         super().__init__(key=key)
         # precondition check
-        assert n_candidates is not None or choose_from is not None, "At least one of `n_candidates` and `choose_from`" \
-                                                                    "must be not None."
+        assert n_candidates is not None or choose_from is not None, (
+            "At least one of `n_candidates` and `choose_from`" "must be not None."
+        )
         if choose_from is not None and n_candidates is None:
             n_candidates = len(choose_from)
         elif choose_from is None and n_candidates is not None:
             choose_from = [self.NO_KEY] * n_candidates
-        assert n_candidates == len(choose_from), "Number of candidates must be equal to the length of `choose_from`."
+        assert n_candidates == len(
+            choose_from
+        ), "Number of candidates must be equal to the length of `choose_from`."
         assert n_candidates > 0, "Number of candidates must be greater than 0."
-        assert n_chosen is None or 0 <= n_chosen <= n_candidates, "Expected selected number must be None or no more " \
-                                                                  "than number of candidates."
+        assert n_chosen is None or 0 <= n_chosen <= n_candidates, (
+            "Expected selected number must be None or no more "
+            "than number of candidates."
+        )
 
         self.n_candidates = n_candidates
         self.choose_from = choose_from.copy()
@@ -334,10 +368,14 @@ class InputChoice(Mutable):
         optional_input_list = optional_inputs
         if isinstance(optional_inputs, dict):
             optional_input_list = [optional_inputs[tag] for tag in self.choose_from]
-        assert isinstance(optional_input_list, list), \
-            "Optional input list must be a list, not a {}.".format(type(optional_input_list))
-        assert len(optional_inputs) == self.n_candidates, \
-            "Length of the input list must be equal to number of candidates."
+        assert isinstance(
+            optional_input_list, list
+        ), "Optional input list must be a list, not a {}.".format(
+            type(optional_input_list)
+        )
+        assert (
+            len(optional_inputs) == self.n_candidates
+        ), "Length of the input list must be equal to number of candidates."
         out, mask = self.mutator.on_forward_input_choice(self, optional_input_list)
         if self.return_mask:
             return out, mask

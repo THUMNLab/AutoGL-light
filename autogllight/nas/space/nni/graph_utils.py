@@ -8,14 +8,15 @@ import re
 from collections import defaultdict
 import torch
 from torch.utils.tensorboard._pytorch_graph import NodePy, NodePyIO, NodePyOP, GraphPy
-CLASSTYPE_KIND = 'ClassType'
-GETATTR_KIND = 'prim::GetAttr'
-CAT_KIND = 'aten::cat'
-LIST_CONSTRUCT_KIND = 'prim::ListConstruct'
-LIST_UNPACK_KIND = 'prim::ListUnpack'
-TUPLE_CONSTRUCT_KIND = 'prim::TupleConstruct'
-TUPLE_UNPACK_KIND = 'prim::TupleUnpack'
-CONSTANT_KIND = 'prim::Constant'
+
+CLASSTYPE_KIND = "ClassType"
+GETATTR_KIND = "prim::GetAttr"
+CAT_KIND = "aten::cat"
+LIST_CONSTRUCT_KIND = "prim::ListConstruct"
+LIST_UNPACK_KIND = "prim::ListUnpack"
+TUPLE_CONSTRUCT_KIND = "prim::TupleConstruct"
+TUPLE_UNPACK_KIND = "prim::TupleUnpack"
+CONSTANT_KIND = "prim::Constant"
 
 _logger = logging.getLogger(__name__)
 
@@ -30,10 +31,10 @@ def build_graph(model, dummy_input, verbose=False):
 
 
 def parse_traced_name(module_name):
-    prefix = 'TracedModule['
-    suffix = ']'
+    prefix = "TracedModule["
+    suffix = "]"
     if module_name.startswith(prefix) and module_name.endswith(suffix):
-        module_name = module_name[len(prefix):-len(suffix)]
+        module_name = module_name[len(prefix) : -len(suffix)]
     return module_name
 
 
@@ -54,10 +55,12 @@ class TorchGraph:
             An alredy traced model, if traced_model is not None, then TorchGraph will build the graph
             based on this traced model and won't trace the model again.
         """
-        assert torch.__version__ >= '1.3.1'
+        assert torch.__version__ >= "1.3.1"
         # check if the input is legal
         if traced_model is not None:
-            assert isinstance(traced_model, torch.jit.TopLevelTracedModule) or isinstance(traced_model, torch.jit.RecursiveScriptModule)
+            assert isinstance(
+                traced_model, torch.jit.TopLevelTracedModule
+            ) or isinstance(traced_model, torch.jit.RecursiveScriptModule)
             self.trace = traced_model
             # it's ok if the graph is already unpacked
             torch._C._jit_pass_inline(self.trace.graph)
@@ -66,15 +69,16 @@ class TorchGraph:
             self._trace(model, dummy_input)
         else:
             raise Exception(
-                'Please provide model & dummy_input or the traced_model as inputs')
+                "Please provide model & dummy_input or the traced_model as inputs"
+            )
 
     def _trace(self, model, dummy_input):
         training = model.training
         model.eval()
         kw_args = {}
-        if torch.__version__ >= '1.6.0':
+        if torch.__version__ >= "1.6.0":
             # only pytorch with version greater than 1.6.0 has the strict option
-            kw_args['strict'] = False
+            kw_args["strict"] = False
         self.trace = torch.jit.trace(model, dummy_input, **kw_args)
         torch._C._jit_pass_inline(self.trace.graph)
         model.train(training)
@@ -100,10 +104,10 @@ class TorchProtoGraph(TorchGraph):
         list_of_nodes = self.parse(self.trace.graph, self.trace, dummy_input)
         if verbose:
             print(self.trace.graph)
-        self.stepstats = RunMetadata(step_stats=StepStats(
-            dev_stats=[DeviceStepStats(device="/device:CPU:0")]))
-        self.graph_def = GraphDef(
-            node=list_of_nodes, versions=VersionDef(producer=22))
+        self.stepstats = RunMetadata(
+            step_stats=StepStats(dev_stats=[DeviceStepStats(device="/device:CPU:0")])
+        )
+        self.graph_def = GraphDef(node=list_of_nodes, versions=VersionDef(producer=22))
 
     def parse(self, graph, trace, args=None, omit_useless_nodes=True):
         """This method parses an optimized PyTorch model graph and produces
@@ -119,29 +123,33 @@ class TorchProtoGraph(TorchGraph):
         nodes_py = GraphPy()
         for node in graph.inputs():
             if omit_useless_nodes:
-                if not node.uses():  # number of user of the node (= number of outputs/ fanout)
+                if (
+                    not node.uses()
+                ):  # number of user of the node (= number of outputs/ fanout)
                     continue
 
             if node.type().kind() != CLASSTYPE_KIND:
-                nodes_py.append(NodePyIO(node, 'input'))
+                nodes_py.append(NodePyIO(node, "input"))
 
         attr_to_scope = dict()
 
         def node_to_name(d):
             return str(d).split(":")[0].strip()
+
         for node in graph.nodes():
             if node.kind() == GETATTR_KIND:
-                attr_name = node.s('name')
+                attr_name = node.s("name")
                 node_name = node_to_name(node)
                 parent = node.input().node()
                 # If the parent node is not the top-level "self" node
                 if parent.kind() == GETATTR_KIND:
                     parent_scope = attr_to_scope[node_to_name(parent)]
-                    attr_scope = parent_scope.split('/')[-1]
-                    attr_to_scope[node_name] = '{}/{}.{}'.format(
-                        parent_scope, attr_scope, attr_name)
+                    attr_scope = parent_scope.split("/")[-1]
+                    attr_to_scope[node_name] = "{}/{}.{}".format(
+                        parent_scope, attr_scope, attr_name
+                    )
                 else:
-                    attr_to_scope[node_name] = '__module.{}'.format(attr_name)
+                    attr_to_scope[node_name] = "__module.{}".format(attr_name)
                 # We don't need classtype nodes; scope will provide this information
                 if node.output().type().kind() != CLASSTYPE_KIND:
                     node_py = NodePyOP(node)
@@ -152,30 +160,32 @@ class TorchProtoGraph(TorchGraph):
 
         # Create sink nodes for output ops
         for i, node in enumerate(graph.outputs()):
-            node_py = NodePyIO(node, 'output')
+            node_py = NodePyIO(node, "output")
             node_py.debugName = "output.{}".format(i + 1)
             node_py.inputs = [node.debugName()]
             nodes_py.append(node_py)
 
         alias_to_name = dict()
         base_name = parse_traced_name(trace._name)
-        for name, module in trace.named_modules(prefix='__module'):
+        for name, module in trace.named_modules(prefix="__module"):
             mod_name = parse_traced_name(module._name)
-            attr_name = name.split('.')[-1]
-            alias_to_name[name] = '{}[{}]'.format(mod_name, attr_name)
+            attr_name = name.split(".")[-1]
+            alias_to_name[name] = "{}[{}]".format(mod_name, attr_name)
 
         for node in nodes_py.nodes_op:
-            module_aliases = node.scopeName.split('/')[-1].split('.')
-            module_name = ''
+            module_aliases = node.scopeName.split("/")[-1].split(".")
+            module_name = ""
             for i, alias in enumerate(module_aliases):
                 if i == 0:
                     module_name = alias
                     node.scopeName = base_name
                 else:
-                    module_name += '.' + alias
-                    node.scopeName += '/' + \
-                        (alias_to_name[module_name]
-                         if module_name in alias_to_name else alias)
+                    module_name += "." + alias
+                    node.scopeName += "/" + (
+                        alias_to_name[module_name]
+                        if module_name in alias_to_name
+                        else alias
+                    )
 
         nodes_py.populate_namespace_from_OP_to_IO()
         return nodes_py.to_proto()
@@ -188,7 +198,17 @@ class NodePyGroup(NodePy):
     represent the torch.nn.Module object. We also group some functional call trace nodes together to form a new node.
     """
 
-    def __init__(self, name, unique_name, node_type, op_type, node_cpps, inputs=None, outputs=None, key_node=None):
+    def __init__(
+        self,
+        name,
+        unique_name,
+        node_type,
+        op_type,
+        node_cpps,
+        inputs=None,
+        outputs=None,
+        key_node=None,
+    ):
         """
         Parameters:
         -----------
@@ -230,16 +250,21 @@ class NodePyGroup(NodePy):
     def add_nodes(self, node_cpps):
         for node_cpp in node_cpps:
             nodepy = NodePyOP(node_cpp)
-            nodepy.name = node_cpp.scopeName() + '_' + node_cpp.kind()
+            nodepy.name = node_cpp.scopeName() + "_" + node_cpp.kind()
             self.nodes.append(nodepy)
 
     def sub_node_names(self):
         return [x.name for x in self.nodes]
 
     def __repr__(self):
-        return 'name: {}, type: {}, op_type: {}, sub_nodes: {}, inputs: {}, outputs: {}, aux: {}'.format(
-            self.name, self.type, self.op_type, self.sub_node_names(),
-            self.inputs, self.outputs, self.auxiliary
+        return "name: {}, type: {}, op_type: {}, sub_nodes: {}, inputs: {}, outputs: {}, aux: {}".format(
+            self.name,
+            self.type,
+            self.op_type,
+            self.sub_node_names(),
+            self.inputs,
+            self.outputs,
+            self.auxiliary,
         )
 
 
@@ -255,8 +280,9 @@ class TorchModuleGraph(TorchGraph):
         self.name_to_node, self.input_to_node, self.output_to_node = self._build_graph()
         self._extract_auxiliary_info()
 
-    def _expand_key_func_node(self, node, nodes, input_to_node, output_to_node,
-                              module_type):
+    def _expand_key_func_node(
+        self, node, nodes, input_to_node, output_to_node, module_type
+    ):
         """
         For trace graph nodes, some nodes are not in modules, these nodes are usually generated by
         the functions directly called in module ```forward```. For such nodes, some of them are
@@ -283,8 +309,13 @@ class TorchModuleGraph(TorchGraph):
             the expanded non-prim node
         """
         # TODO: scope name could be empty
-        node_name = '.'.join([self._get_module_name(
-            node.scopeName()), node.kind(), str(self.global_count)])
+        node_name = ".".join(
+            [
+                self._get_module_name(node.scopeName()),
+                node.kind(),
+                str(self.global_count),
+            ]
+        )
         unique_name = node_name
         _logger.debug("expand non-prim node, node name: %s", node_name)
         self.global_count += 1
@@ -317,12 +348,29 @@ class TorchModuleGraph(TorchGraph):
             if output.node().kind() == CONSTANT_KIND:
                 continue
             outputs.append(output.debugName())
-        nodepy = NodePyGroup(node_name, unique_name, module_type, op_type,
-                             node_group, inputs=inputs, outputs=outputs, key_node=node)
+        nodepy = NodePyGroup(
+            node_name,
+            unique_name,
+            module_type,
+            op_type,
+            node_group,
+            inputs=inputs,
+            outputs=outputs,
+            key_node=node,
+        )
         return nodepy
 
-    def _expand_module_node(self, node, node_name, unique_name, op_type, nodes,
-                            input_to_node, output_to_node, module_type):
+    def _expand_module_node(
+        self,
+        node,
+        node_name,
+        unique_name,
+        op_type,
+        nodes,
+        input_to_node,
+        output_to_node,
+        module_type,
+    ):
         """
         merge the adjacent nodes of the module. The difference between the
         _expand_module_node and _expand_non_prim_node is that, the _expand_non_prim_node
@@ -399,8 +447,15 @@ class TorchModuleGraph(TorchGraph):
         # remove the dumplicated output names
         unique_outputs.sort(key=outputs.index)
 
-        nodepy = NodePyGroup(node_name, unique_name, module_type, op_type,
-                             node_group, inputs=list(inputs), outputs=unique_outputs)
+        nodepy = NodePyGroup(
+            node_name,
+            unique_name,
+            module_type,
+            op_type,
+            node_group,
+            inputs=list(inputs),
+            outputs=unique_outputs,
+        )
         return nodepy
 
     def _extract_cat_info(self, node_group, cpp_node):
@@ -434,11 +489,11 @@ class TorchModuleGraph(TorchGraph):
         # get the shape of the output tensor
         t_output = cpp_node.output()
         out_shape = t_output.type().sizes()
-        cat_info['out_shape'] = out_shape
+        cat_info["out_shape"] = out_shape
         # get the cat dimension
         inputs = cpp_node.inputs()
         cat_dim = list(inputs)[1].toIValue()
-        cat_info['cat_dim'] = cat_dim
+        cat_info["cat_dim"] = cat_dim
         # get the order of the input tensors
         # To get the order of the input tensors, we need
         # to be aware of the topology of the model, which
@@ -454,9 +509,9 @@ class TorchModuleGraph(TorchGraph):
             else:
                 # the input tensor may be the input tensor of the whole model
                 input_order.append(None)
-        cat_info['in_order'] = input_order
+        cat_info["in_order"] = input_order
         input_shapes = [t.type().sizes() for t in input_tensors]
-        cat_info['in_shape'] = input_shapes
+        cat_info["in_shape"] = input_shapes
         return cat_info
 
     def _extract_linear_shape_info(self, node_group):
@@ -474,7 +529,7 @@ class TorchModuleGraph(TorchGraph):
             Include shape of input tensor and shape of output tensor
         """
         for cpp_node in node_group.node_cpps:
-            if cpp_node.kind() == 'aten::addmm':
+            if cpp_node.kind() == "aten::addmm":
                 # https://github.com/pytorch/pytorch/blob/1.6/torch/nn/functional.py#L1682
                 # inputs of aten::addmm:
                 # inputs[0] is bias
@@ -486,7 +541,7 @@ class TorchModuleGraph(TorchGraph):
                 assert isinstance(t_output.type(), torch._C.TensorType)
                 in_shape = t_input.type().sizes()
                 out_shape = t_output.type().sizes()
-                return {'in_shape': in_shape, 'out_shape': out_shape}
+                return {"in_shape": in_shape, "out_shape": out_shape}
         return None
 
     def _extract_shape_info(self, node):
@@ -512,7 +567,7 @@ class TorchModuleGraph(TorchGraph):
         assert isinstance(t_output.type(), torch._C.TensorType)
         in_shape = t_input.type().sizes()
         out_shape = t_output.type().sizes()
-        return {'in_shape': in_shape, 'out_shape': out_shape}
+        return {"in_shape": in_shape, "out_shape": out_shape}
 
     def _extract_leaf_modules(self):
         """
@@ -526,21 +581,22 @@ class TorchModuleGraph(TorchGraph):
         list
             a list of scope name of all the leaf modules
         """
+
         def is_parent(name1, name2):
             """
             check if name1 is parent node of name2, for example:
             name1: aa.bb,  name2: aa.bb.cc,  return True
             name1: aa.b,  name2: aa.bb, return False
             """
-            parts1, parts2 = name1.split('.'), name2.split('.')
+            parts1, parts2 = name1.split("."), name2.split(".")
             if len(parts1) >= len(parts2):
                 return False
             for i, _ in enumerate(parts1):
                 if parts2[i] != parts1[i]:
                     return False
             return True
-        module_names = sorted([x[0]
-                               for x in self.trace.named_modules() if x[0]])
+
+        module_names = sorted([x[0] for x in self.trace.named_modules() if x[0]])
         leaf_nodes = []
         for i, name in enumerate(module_names):
             if i + 1 >= len(module_names) or not is_parent(name, module_names[i + 1]):
@@ -562,10 +618,10 @@ class TorchModuleGraph(TorchGraph):
         str
             module name, such as backbone.conv2
         """
-        if torch.__version__ >= '1.4.0':
-            return scope_name.split('/')[-1].replace('__module.', '')
+        if torch.__version__ >= "1.4.0":
+            return scope_name.split("/")[-1].replace("__module.", "")
         else:
-            return '.'.join(re.findall(r'\[(.*?)\]', scope_name))
+            return ".".join(re.findall(r"\[(.*?)\]", scope_name))
 
     def _build_index(self, nodes_op):
         name_to_node = dict()
@@ -579,8 +635,9 @@ class TorchModuleGraph(TorchGraph):
                     input_to_node[_input].append(node)
             for output in node.outputs:
                 if output in output_to_node:
-                    assert output_to_node[output] == node, \
+                    assert output_to_node[output] == node, (
                         "One output cannot be generated by multiple nodes %s" % output
+                    )
                 output_to_node[output] = node
         return name_to_node, input_to_node, output_to_node
 
@@ -590,7 +647,7 @@ class TorchModuleGraph(TorchGraph):
         If so, we should not merge this node into the
         adjacent node.
         """
-        if node_cpp.kind().startswith('aten::'):
+        if node_cpp.kind().startswith("aten::"):
             # the nodes that start with 'aten' are key function
             # nodes
             return True
@@ -615,7 +672,7 @@ class TorchModuleGraph(TorchGraph):
         the graph. Note: this function will change the
         graph structure.
         """
-        if hasattr(self, 'unpacked'):
+        if hasattr(self, "unpacked"):
             # if already unpacked the tuple/list manually
             return
         for node in self.nodes_py.nodes_op:
@@ -626,15 +683,22 @@ class TorchModuleGraph(TorchGraph):
                     # we need check if the tensor tuple or tensor list is produced
                     # by a list/tuple construct node. If so, we can unpack the tuple
                     # or list manunally.
-                    _logger.debug('List/Tuple Construct Node(cpp) %s', str(last_cpp))
-                    _logger.debug('List/Tuple Unpack Node(cpp) %s', str(unpack_cpp))
-                    assert len(list(unpack_cpp.outputs())) == len(list(last_cpp.inputs()))
-                    errmsg = '%s Input number: %d if inconsistent with the output number %d' % (unpack_cpp, \
-                        len(node.inputs), len(list(last_cpp.inputs())))
+                    _logger.debug("List/Tuple Construct Node(cpp) %s", str(last_cpp))
+                    _logger.debug("List/Tuple Unpack Node(cpp) %s", str(unpack_cpp))
+                    assert len(list(unpack_cpp.outputs())) == len(
+                        list(last_cpp.inputs())
+                    )
+                    errmsg = (
+                        "%s Input number: %d if inconsistent with the output number %d"
+                        % (unpack_cpp, len(node.inputs), len(list(last_cpp.inputs())))
+                    )
 
                     assert len(node.inputs) == len(list(last_cpp.inputs())), errmsg
                     for _debug_input, _debug_output in zip(node.inputs, node.outputs):
-                        if _debug_input in self.input_to_node and _debug_output in self.input_to_node:
+                        if (
+                            _debug_input in self.input_to_node
+                            and _debug_output in self.input_to_node
+                        ):
                             # input_to_node[_debug_input] is a list of NodePyGroup, because
                             # one tensor can be used as input for multiple nodes at the same time.
 
@@ -645,14 +709,15 @@ class TorchModuleGraph(TorchGraph):
                             if node in self.input_to_node[_debug_input]:
                                 self.input_to_node[_debug_input].remove(node)
                             # add the following nodes of _output into the input_to_node[_debug_input]
-                            self.input_to_node[_debug_input].extend(self.input_to_node[_debug_output])
+                            self.input_to_node[_debug_input].extend(
+                                self.input_to_node[_debug_output]
+                            )
                         # just remove the _debug_output from the grapgh index. So that we can also skip
                         # the construct and tuple
                         if _debug_output in self.input_to_node:
                             for following_node in self.input_to_node[_debug_output]:
                                 _tmp_index = following_node.inputs.index(_debug_output)
                                 following_node.inputs[_tmp_index] = _debug_input
-
 
         self.unpacked = True
 
@@ -687,7 +752,10 @@ class TorchModuleGraph(TorchGraph):
                 if x.node().kind() == CONSTANT_KIND:
                     continue
                 output_to_node[x.debugName()].append(node)
-                assert len(output_to_node[x.debugName()]) <= 1, "One output cannot be generated by multiple nodes %s" % x.debugName()
+                assert len(output_to_node[x.debugName()]) <= 1, (
+                    "One output cannot be generated by multiple nodes %s"
+                    % x.debugName()
+                )
             for x in node.inputs():
                 if x.node().kind() == CONSTANT_KIND:
                     continue
@@ -701,15 +769,21 @@ class TorchModuleGraph(TorchGraph):
         nodes_py = GraphPy()
         for node in graph.inputs():
             if omit_useless_nodes:
-                if not node.uses():  # number of user of the node (= number of outputs/ fanout)
+                if (
+                    not node.uses()
+                ):  # number of user of the node (= number of outputs/ fanout)
                     continue
 
-            if node.type().kind() != 'ClassType':
-                nodes_py.append(NodePyIO(node, 'input'))
+            if node.type().kind() != "ClassType":
+                nodes_py.append(NodePyIO(node, "input"))
 
         self.leaf_modules = self._extract_leaf_modules()
-        module_to_type = {name: parse_traced_name(
-            module._name if hasattr(module, '_name') else module.original_name) for name, module in self.trace.named_modules()}
+        module_to_type = {
+            name: parse_traced_name(
+                module._name if hasattr(module, "_name") else module.original_name
+            )
+            for name, module in self.trace.named_modules()
+        }
 
         # associate module name with their trace graph nodes
         for node in graph.nodes():
@@ -731,12 +805,19 @@ class TorchModuleGraph(TorchGraph):
                     # so we also need to call the expand_module_node.
                     unique_name = module_name
                     if use_count > 0:
-                        unique_name = module_name + '.%d' % use_count
+                        unique_name = module_name + ".%d" % use_count
                         self.reused_module.add(unique_name)
                         self.reused_module.add(module_name)
                     node_group = self._expand_module_node(
-                        node, module_name, unique_name, module_to_type[module_name],
-                        node_cpps, input_to_node, output_to_node, 'module')
+                        node,
+                        module_name,
+                        unique_name,
+                        module_to_type[module_name],
+                        node_cpps,
+                        input_to_node,
+                        output_to_node,
+                        "module",
+                    )
                     nodes_py.nodes_op.append(node_group)
                     use_count += 1
                     merged.update(node_group.node_cpps)
@@ -753,14 +834,15 @@ class TorchModuleGraph(TorchGraph):
             # for each non prim node, expand it
             for node in key_func_nodes:
                 node_group = self._expand_key_func_node(
-                    node, nodes, input_to_node, output_to_node, 'func')
+                    node, nodes, input_to_node, output_to_node, "func"
+                )
                 nodes_py.nodes_op.append(node_group)
                 # get shape infor for view (aten::view) func
                 # if node_group.op_type in ['aten::view', 'aten::flatten']:
                 #     node_group.auxiliary = self._extract_shape_info(node)
 
         for node in graph.outputs():  # Create sink nodes for output ops
-            node_py = NodePyIO(node, 'output')
+            node_py = NodePyIO(node, "output")
             nodes_py.append(node_py)
 
         self.nodes_py = nodes_py
@@ -775,20 +857,31 @@ class TorchModuleGraph(TorchGraph):
         """
         # extract the input & output shape for the view and flatten
         for node_group in self.nodes_py.nodes_op:
-            if node_group.op_type in ['aten::view', 'aten::flatten', 'aten::mean', 'aten::reshape', 'aten::expand_as',
-                                      'aten::pixel_shuffle']:
+            if node_group.op_type in [
+                "aten::view",
+                "aten::flatten",
+                "aten::mean",
+                "aten::reshape",
+                "aten::expand_as",
+                "aten::pixel_shuffle",
+            ]:
                 # get shape infor for view (aten::view) func
-                cpp_node = list(filter(lambda x: x.kind() == node_group.op_type,
-                                       node_group.node_cpps))[0]
+                cpp_node = list(
+                    filter(
+                        lambda x: x.kind() == node_group.op_type, node_group.node_cpps
+                    )
+                )[0]
                 node_group.auxiliary = self._extract_shape_info(cpp_node)
-            elif node_group.op_type == 'Linear':
+            elif node_group.op_type == "Linear":
                 node_group.auxiliary = self._extract_linear_shape_info(node_group)
             elif node_group.op_type == CAT_KIND:
                 # get the detail information for cat func
-                cpp_node = list(filter(lambda x: x.kind() == node_group.op_type,
-                                       node_group.node_cpps))[0]
-                node_group.auxiliary = self._extract_cat_info(
-                    node_group, cpp_node)
+                cpp_node = list(
+                    filter(
+                        lambda x: x.kind() == node_group.op_type, node_group.node_cpps
+                    )
+                )[0]
+                node_group.auxiliary = self._extract_cat_info(node_group, cpp_node)
 
     def find_predecessors(self, unique_name):
         """

@@ -27,7 +27,9 @@ class OrderedMutable:
 
 
 class OrderedLayerChoice(OrderedMutable, mutables.LayerChoice):
-    def __init__(self, order, op_candidates, reduction="sum", return_mask=False, key=None):
+    def __init__(
+        self, order, op_candidates, reduction="sum", return_mask=False, key=None
+    ):
         OrderedMutable.__init__(self, order)
         mutables.LayerChoice.__init__(self, op_candidates, reduction, return_mask, key)
 
@@ -44,7 +46,9 @@ class OrderedInputChoice(OrderedMutable, mutables.InputChoice):
         key=None,
     ):
         OrderedMutable.__init__(self, order)
-        mutables.InputChoice.__init__(self, n_candidates, choose_from, n_chosen, reduction, return_mask, key)
+        mutables.InputChoice.__init__(
+            self, n_candidates, choose_from, n_chosen, reduction, return_mask, key
+        )
 
 
 class StrModule(nn.Module):
@@ -212,19 +216,29 @@ class PathSamplingLayerChoice(nn.Module):
         self.sampled = None  # sampled can be either a list of indices or an index
 
     def forward(self, *args, **kwargs):
-        assert self.sampled is not None, "At least one path needs to be sampled before fprop."
+        assert (
+            self.sampled is not None
+        ), "At least one path needs to be sampled before fprop."
         if isinstance(self.sampled, list):
-            return sum([getattr(self, self.op_names[i])(*args, **kwargs) for i in self.sampled])  # pylint: disable=not-an-iterable
+            return sum(
+                [getattr(self, self.op_names[i])(*args, **kwargs) for i in self.sampled]
+            )  # pylint: disable=not-an-iterable
         else:
-            return getattr(self, self.op_names[self.sampled])(*args, **kwargs)  # pylint: disable=invalid-sequence-index
+            return getattr(self, self.op_names[self.sampled])(
+                *args, **kwargs
+            )  # pylint: disable=invalid-sequence-index
 
     def sampled_choices(self):
         if self.sampled is None:
             return []
         elif isinstance(self.sampled, list):
-            return [getattr(self, self.op_names[i]) for i in self.sampled]  # pylint: disable=not-an-iterable
+            return [
+                getattr(self, self.op_names[i]) for i in self.sampled
+            ]  # pylint: disable=not-an-iterable
         else:
-            return [getattr(self, self.op_names[self.sampled])]  # pylint: disable=invalid-sequence-index
+            return [
+                getattr(self, self.op_names[self.sampled])
+            ]  # pylint: disable=invalid-sequence-index
 
     def __len__(self):
         return len(self.op_names)
@@ -234,7 +248,9 @@ class PathSamplingLayerChoice(nn.Module):
         return _get_mask(self.sampled, len(self))
 
     def __repr__(self):
-        return f"PathSamplingLayerChoice(op_names={self.op_names}, chosen={self.sampled})"
+        return (
+            f"PathSamplingLayerChoice(op_names={self.op_names}, chosen={self.sampled})"
+        )
 
 
 class PathSamplingInputChoice(nn.Module):
@@ -257,7 +273,9 @@ class PathSamplingInputChoice(nn.Module):
 
     def forward(self, input_tensors):
         if isinstance(self.sampled, list):
-            return sum([input_tensors[t] for t in self.sampled])  # pylint: disable=not-an-iterable
+            return sum(
+                [input_tensors[t] for t in self.sampled]
+            )  # pylint: disable=not-an-iterable
         else:
             return input_tensors[self.sampled]
 
@@ -325,7 +343,7 @@ def replace_layer_choice(root_module, init_fn, modules=None):
     List[Tuple[str, nn.Module]]
         A list from layer choice keys (names) and replaced modules.
     """
-    return _replace_module_with_type(root_module, init_fn, (LayerChoice, ), modules)
+    return _replace_module_with_type(root_module, init_fn, (LayerChoice,), modules)
 
 
 def replace_input_choice(root_module, init_fn, modules=None):
@@ -346,4 +364,4 @@ def replace_input_choice(root_module, init_fn, modules=None):
     List[Tuple[str, nn.Module]]
         A list from layer choice keys (names) and replaced modules.
     """
-    return _replace_module_with_type(root_module, init_fn, (InputChoice, ), modules)
+    return _replace_module_with_type(root_module, init_fn, (InputChoice,), modules)

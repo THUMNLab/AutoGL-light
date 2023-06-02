@@ -94,7 +94,9 @@ class BaseSpace(nn.Module):
             orikey = key
         return orikey
 
-    def setLayerChoice(self, order, op_candidates, reduction="sum", return_mask=False, key=None):
+    def setLayerChoice(
+        self, order, op_candidates, reduction="sum", return_mask=False, key=None
+    ):
         """
         Give a unique key if not given
         """
@@ -117,7 +119,9 @@ class BaseSpace(nn.Module):
         Give a unique key if not given
         """
         key = self.getOriKey(key)
-        layer = OrderedInputChoice(order, n_candidates, choose_from, n_chosen, reduction, return_mask, key)
+        layer = OrderedInputChoice(
+            order, n_candidates, choose_from, n_chosen, reduction, return_mask, key
+        )
         setattr(self, key, layer)
         return layer
 

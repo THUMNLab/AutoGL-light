@@ -5,7 +5,12 @@ import torch.nn.functional as F
 from .base import BaseNAS
 from ..space import BaseSpace
 from ..space.nni import (
-    replace_layer_choice, replace_input_choice, get_module_order, sort_replaced_module, PathSamplingLayerChoice, PathSamplingInputChoice
+    replace_layer_choice,
+    replace_input_choice,
+    get_module_order,
+    sort_replaced_module,
+    PathSamplingLayerChoice,
+    PathSamplingInputChoice,
 )
 from tqdm import tqdm
 import numpy as np
@@ -28,7 +33,13 @@ class RandomSearch(BaseNAS):
         Control whether show the progress bar.
     """
 
-    def __init__(self, device="auto", num_epochs=400, disable_progress=False, hardware_metric_limit=None):
+    def __init__(
+        self,
+        device="auto",
+        num_epochs=400,
+        disable_progress=False,
+        hardware_metric_limit=None,
+    ):
         super().__init__(device)
         self.num_epochs = num_epochs
         self.disable_progress = disable_progress
