@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from .base import BaseSpace
 from ...utils.backend import BackendOperator as BK
 
+
 class SinglePathNodeClassificationSpace(BaseSpace):
     def __init__(
         self,

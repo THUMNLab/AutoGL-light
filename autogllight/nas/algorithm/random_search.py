@@ -39,7 +39,7 @@ class RandomSearch(BaseNAS):
         num_epochs=400,
         disable_progress=False,
         hardware_metric_limit=None,
-        select_metric = "acc",
+        select_metric="acc",
     ):
         super().__init__(device)
         self.num_epochs = num_epochs

@@ -36,5 +36,7 @@ class OneShotEstimator(BaseEstimator):
         probs = F.softmax(pred, dim=1).detach().cpu().numpy()
 
         y = y.cpu()
-        metrics = {eva.get_eval_name(): eva.evaluate(probs, y) for eva in self.evaluation}
+        metrics = {
+            eva.get_eval_name(): eva.evaluate(probs, y) for eva in self.evaluation
+        }
         return metrics, loss
