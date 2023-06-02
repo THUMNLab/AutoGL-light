@@ -6,7 +6,7 @@ import random
 import numpy as np
 from autogllight.utils import *
 from autogllight.nas.space import SinglePathNodeClassificationSpace
-from autogllight.nas.algorithm import RandomSearch, Darts, RL, GraphNasRL, Enas
+from autogllight.nas.algorithm import RandomSearch, Darts, RL, GraphNasRL, Enas, Spos
 from autogllight.nas.estimator import OneShotEstimator
 from torch_geometric.datasets import Planetoid
 from os import path as osp
@@ -81,6 +81,13 @@ def test_graphnas_rl_nws():
 def test_enas():
     set_seed(0)
     algo = Enas(num_epochs=2, ctrl_steps_aggregate=2)
+    estimator = OneShotEstimator()
+    dataset, space = get_default()
+    algo.search(space, dataset, estimator)
+
+def test_spos():
+    set_seed(0)
+    algo = Spos(n_warmup=10, cycles = 200)
     estimator = OneShotEstimator()
     dataset, space = get_default()
     algo.search(space, dataset, estimator)
