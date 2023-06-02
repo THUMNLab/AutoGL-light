@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 
 from .base import BaseSpace
-from ...utils.backend.op import *
+from ...utils.backend import BackendOperator as BK
 
 
 class SinglePathNodeClassificationSpace(BaseSpace):
@@ -50,14 +50,11 @@ class SinglePathNodeClassificationSpace(BaseSpace):
         self._initialized = True
 
     def forward(self, data):
-        x = bk_feat(data)
+        x = BK.feat(data)
         for layer in range(self.layer_number):
             op = getattr(self, f"op_{layer}")
-            x = bk_gconv(op, data, x)
+            x = BK.gconv(op, data, x)
             if layer != self.layer_number - 1:
                 x = F.leaky_relu(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
         return F.log_softmax(x, dim=1)
-
-    def parse_model(self, selection, device):
-        return self.wrap().fix(selection)

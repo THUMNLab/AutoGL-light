@@ -10,7 +10,6 @@ from ..space.nni import (
 from tqdm import tqdm
 import numpy as np
 import logging as _logging
-import typing as _typing
 
 nas_logger: _logging.Logger = _logging.getLogger("NAS")
 
@@ -64,14 +63,14 @@ class RandomSearch(BaseNAS):
                 selection = self.sample()
                 vec = tuple(list(selection.values()))
                 if vec not in cache:
-                    self.arch = space.parse_model(selection, self.device)
+                    self.arch = space.parse_model(selection)
                     metric, loss = self._infer(mask="val")
                     metric = list(metric.values())[0]
                     arch_perfs.append([metric, selection])
                     cache[vec] = metric
                 bar.set_postfix(acc=metric, max_acc=max(cache.values()))
         selection = arch_perfs[np.argmax([x[0] for x in arch_perfs])][1]
-        arch = space.parse_model(selection, self.device)
+        arch = space.parse_model(selection)
         return arch
 
     def sample(self):
