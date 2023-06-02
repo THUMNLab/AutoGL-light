@@ -85,9 +85,10 @@ def test_enas():
     dataset, space = get_default()
     algo.search(space, dataset, estimator)
 
+
 def test_spos():
     set_seed(0)
-    algo = Spos(n_warmup=10, cycles = 200)
+    algo = Spos(n_warmup=10, cycles=200)
     estimator = OneShotEstimator()
     dataset, space = get_default()
     algo.search(space, dataset, estimator)

@@ -134,12 +134,15 @@ class BaseSpace(nn.Module):
         setattr(self, key, layer)
         return layer
 
+    def wrap(self):
+        return BoxModel(self)
+
     def parse_model(self, selection):
         """Get the fixed model from the selection
         Usage: the fixed model can be obtained by boxmodel._model 
         Warning : this method will randomize the learnable parameters in the model, as the model is re-instantiated.
         """
-        boxmodel = BoxModel(self).fix(selection)
+        boxmodel = self.wrap().fix(selection)
         return boxmodel
 
 
