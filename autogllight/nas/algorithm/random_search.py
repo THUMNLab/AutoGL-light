@@ -39,11 +39,13 @@ class RandomSearch(BaseNAS):
         num_epochs=400,
         disable_progress=False,
         hardware_metric_limit=None,
+        select_metric = "acc",
     ):
         super().__init__(device)
         self.num_epochs = num_epochs
         self.disable_progress = disable_progress
         self.hardware_metric_limit = hardware_metric_limit
+        self.select_metric = select_metric
 
     def init_search(self):
         self.nas_modules = []
@@ -76,7 +78,7 @@ class RandomSearch(BaseNAS):
                 if vec not in cache:
                     self.arch = space.parse_model(selection)
                     metric, loss = self._infer(mask="val")
-                    metric = list(metric.values())[0]
+                    metric = metric[self.select_metric]
                     arch_perfs.append([metric, selection])
                     cache[vec] = metric
                 bar.set_postfix(acc=metric, max_acc=max(cache.values()))
