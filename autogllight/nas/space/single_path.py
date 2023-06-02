@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from .base import BaseSpace
 from ...utils.backend import BackendOperator as BK
 
-
 class SinglePathNodeClassificationSpace(BaseSpace):
     def __init__(
         self,
@@ -26,21 +25,7 @@ class SinglePathNodeClassificationSpace(BaseSpace):
         self.ops = ops
         self.dropout = dropout
 
-    def instantiate(
-        self,
-        hidden_dim: _typ.Optional[int] = None,
-        layer_number: _typ.Optional[int] = None,
-        input_dim: _typ.Optional[int] = None,
-        output_dim: _typ.Optional[int] = None,
-        ops: _typ.Tuple = None,
-        dropout=None,
-    ):
-        self.hidden_dim = hidden_dim or self.hidden_dim
-        self.layer_number = layer_number or self.layer_number
-        self.input_dim = input_dim or self.input_dim
-        self.output_dim = output_dim or self.output_dim
-        self.ops = ops or self.ops
-        self.dropout = dropout or self.dropout
+    def build_graph(self):
         for layer in range(self.layer_number):
             key = f"op_{layer}"
             in_dim = self.input_dim if layer == 0 else self.hidden_dim
@@ -54,7 +39,6 @@ class SinglePathNodeClassificationSpace(BaseSpace):
                 for op in self.ops
             ]
             self.setLayerChoice(layer, op_candidates, key=key)
-        self._initialized = True
 
     def forward(self, data):
         x = BK.feat(data)

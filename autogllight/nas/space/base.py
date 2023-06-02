@@ -79,10 +79,19 @@ class BaseSpace(nn.Module):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def instantiate(self):
+    def instantiate(self,**kwargs):
         """
         Instantiate modules in the space
+        """
+        for k,v in kwargs.items():
+            setattr(self,k,v)
+        self.build_graph()
+        self._initialized = True
+    
+    @abstractmethod
+    def build_graph(self):
+        """
+        Instantiate the operation graph in the space
         """
         raise NotImplementedError()
 
