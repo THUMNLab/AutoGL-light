@@ -4,7 +4,9 @@ import torch.nn.functional as F
 
 from .base import BaseNAS
 from ..space import BaseSpace
-from ..utils import replace_layer_choice, replace_input_choice, get_module_order, sort_replaced_module, PathSamplingLayerChoice, PathSamplingInputChoice
+from ..space.nni import (
+    replace_layer_choice, replace_input_choice, get_module_order, sort_replaced_module, PathSamplingLayerChoice, PathSamplingInputChoice
+)
 from tqdm import tqdm
 import numpy as np
 import logging as _logging
