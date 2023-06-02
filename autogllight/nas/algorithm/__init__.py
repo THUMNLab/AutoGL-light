@@ -4,3 +4,4 @@ from .rl import RL
 from .graphnas_rl import GraphNasRL
 from .enas import Enas
 from .spos import Spos
+from .grna import GRNA
