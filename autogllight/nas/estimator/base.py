@@ -5,7 +5,6 @@ Base estimator of NAS
 from abc import abstractmethod
 from ..space import BaseSpace
 from typing import Tuple
-from ...train.evaluation import Evaluation, Acc
 import torch.nn.functional as F
 import torch
 
