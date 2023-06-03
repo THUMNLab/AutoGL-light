@@ -5,7 +5,11 @@ import yaml
 import random
 import numpy as np
 from autogllight.utils import *
-from autogllight.nas.space import SinglePathNodeClassificationSpace, GassoSpace
+from autogllight.nas.space import (
+    SinglePathNodeClassificationSpace,
+    GassoSpace,
+    GraphNasNodeClassificationSpace,
+)
 from autogllight.nas.algorithm import (
     RandomSearch,
     Darts,
@@ -108,5 +112,11 @@ if __name__ == "__main__":
     # space = GassoSpace(input_dim=input_dim, output_dim=num_classes)
     # space.instantiate()
     # algo = Gasso(num_epochs=20)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
+    # space = GraphNasNodeClassificationSpace(input_dim=input_dim, output_dim=num_classes)
+    # space.instantiate()
+    # algo = GraphNasRL(num_epochs=2, ctrl_steps_aggregate=2, weight_share = True)
     # estimator = OneShotEstimator()
     # algo.search(space, dataset, estimator)
