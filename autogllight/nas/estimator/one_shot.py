@@ -23,12 +23,12 @@ class OneShotEstimator(BaseEstimator):
         super().__init__(loss_f, evaluation)
         self.evaluation = evaluation
 
-    def infer(self, model: BaseSpace, dataset, mask="train"):
+    def infer(self, model: BaseSpace, dataset, mask="train", *args, **kwargs):
         device = next(model.parameters()).device
         dset = dataset[0].to(device)
         mask = bk_mask(dset, mask)
 
-        pred = model(dset)[mask]
+        pred = model(dset, *args, **kwargs)[mask]
         label = bk_label(dset)
         y = label[mask]
 

@@ -105,8 +105,8 @@ if __name__ == "__main__":
     # estimator = OneShotEstimator()
     # algo.search(space, dataset, estimator)
 
-    space = GassoSpace(input_dim=input_dim, output_dim=num_classes)
-    space.instantiate()
-    algo = Gasso()
-    estimator = OneShotEstimator()
-    algo.search(space, dataset, estimator)
+    # space = GassoSpace(input_dim=input_dim, output_dim=num_classes)
+    # space.instantiate()
+    # algo = Gasso(num_epochs=20)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)

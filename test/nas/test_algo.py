@@ -6,7 +6,14 @@ import random
 import numpy as np
 from autogllight.utils import *
 from autogllight.nas.space import SinglePathNodeClassificationSpace
-from autogllight.nas.algorithm import RandomSearch, Darts, RL, GraphNasRL, Enas, Spos
+from autogllight.nas.algorithm import (
+    RandomSearch,
+    Darts,
+    RL,
+    GraphNasRL,
+    Enas,
+    Spos,
+)
 from autogllight.nas.estimator import OneShotEstimator
 from torch_geometric.datasets import Planetoid
 from os import path as osp

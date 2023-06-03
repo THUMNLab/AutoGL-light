@@ -10,6 +10,7 @@ from ..space import BaseSpace
 from torch.autograd import Variable
 import time
 import torch.optim as optim
+from tqdm import tqdm, trange
 
 _logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class Gasso(BaseNAS):
         stru_lr=0.04,
         lamb=0.6,
         device="auto",
+        disable_progress=False,
     ):
         super().__init__(device=device)
         self.num_epochs = num_epochs
@@ -59,12 +61,13 @@ class Gasso(BaseNAS):
         self.arch_lr = arch_lr
         self.stru_lr = stru_lr
         self.lamb = lamb
+        self.disable_progress = disable_progress
 
     def train_stru(self, model, optimizer, data):
         # forward
         model.train()
-        data[0].adj = self.adjs
-        logits = model(data[0]).detach()
+        # data[0].adj = self.adjs
+        logits = model(data[0].to(self.device), self.adjs).detach()
         loss = 0
         for adj in self.adjs:
             e1 = adj[0][0]
@@ -82,8 +85,8 @@ class Gasso(BaseNAS):
         del logits
 
     def _infer(self, model: BaseSpace, dataset, estimator: BaseEstimator, mask="train"):
-        dataset[0].adj = self.adjs
-        metric, loss = estimator.infer(model, dataset, mask=mask)
+        # dataset[0].adj = self.adjs
+        metric, loss = estimator.infer(model, dataset, mask=mask, adjs=self.adjs)
         return metric, loss
 
     def prepare(self, dset):
@@ -117,30 +120,33 @@ class Gasso(BaseNAS):
         min_train_loss = float("inf")
 
         t_total = time.time()
-        for epoch in range(self.num_epochs):
-            self.space.train()
-            self.optimizer.zero_grad()
-            _, loss = self._infer(self.space, data, self.estimator, "train")
-            loss.backward()
-            self.optimizer.step()
+        with trange(self.num_epochs, disable=self.disable_progress) as bar:
+            for epoch in bar:
+                self.space.train()
+                self.optimizer.zero_grad()
+                _, loss = self._infer(self.space, data, self.estimator, "train")
+                loss.backward()
+                self.optimizer.step()
 
-            if epoch < 20:
-                continue
-            self.train_stru(self.space, self.stru_optimizer, data)
+                if epoch < 20:
+                    continue
+                self.train_stru(self.space, self.stru_optimizer, data)
 
-            self.arch_optimizer.zero_grad()
-            _, loss = self._infer(self.space, data, self.estimator, "train")
-            loss.backward()
-            self.arch_optimizer.step()
+                self.arch_optimizer.zero_grad()
+                _, loss = self._infer(self.space, data, self.estimator, "train")
+                loss.backward()
+                self.arch_optimizer.step()
 
-            self.space.eval()
-            train_acc, _ = self._infer(self.space, data, self.estimator, "train")
-            val_acc, val_loss = self._infer(self.space, data, self.estimator, "val")
-            if val_loss < min_val_loss:
-                min_val_loss = val_loss
-                best_performance = val_acc
-                self.space.keep_prediction()
-            # print("acc:" + str(train_acc) + " val_acc" + str(val_acc))
+                self.space.eval()
+                train_acc, _ = self._infer(self.space, data, self.estimator, "train")
+                val_acc, val_loss = self._infer(self.space, data, self.estimator, "val")
+                if val_loss < min_val_loss:
+                    min_val_loss = val_loss
+                    best_performance = val_acc
+                    self.space.keep_prediction()
+
+                bar.set_postfix(train_acc=train_acc["acc"], val_acc=val_acc["acc"])
+                # print("acc:" + str(train_acc) + " val_acc" + str(val_acc))
 
         return best_performance, min_val_loss
 

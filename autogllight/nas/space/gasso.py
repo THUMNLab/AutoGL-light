@@ -126,9 +126,10 @@ class GassoSpace(BaseSpace):
         self.initialize_alphas()
 
     # def forward(self, x, adjs):
-    def forward(self, data):
+    def forward(self, data, adjs):
         if self.use_forward:
-            x, adjs = data.x, data.adj
+            # x, adjs = data.x, data.adj
+            x = data.x
             x = F.dropout(x, p=self.dropout, training=self.training)
 
             weights = []
