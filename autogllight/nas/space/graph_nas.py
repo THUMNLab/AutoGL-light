@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 from .nni import mutables
 from .base import BaseSpace
-from .operation import act_map, gnn_map
+from .operation import act_map, gnn_map, act_map_nn, map_nn
 from autogllight.utils.backend import BackendOperator as BK
 
 GRAPHNAS_DEFAULT_GNN_OPS = [
@@ -35,38 +35,6 @@ GRAPHNAS_DEFAULT_ACT_OPS = [
 
 GRAPHNAS_DEFAULT_CON_OPS = ["add", "product", "concat"]
 # GRAPHNAS_DEFAULT_CON_OPS=[ "concat"] # for darts
-
-
-class LambdaModule(nn.Module):
-    def __init__(self, lambd):
-        super().__init__()
-        self.lambd = lambd
-
-    def forward(self, x):
-        return self.lambd(x)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.lambd)
-
-
-class StrModule(nn.Module):
-    def __init__(self, lambd):
-        super().__init__()
-        self.str = lambd
-
-    def forward(self, *args, **kwargs):
-        return self.str
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.str)
-
-
-def act_map_nn(act):
-    return LambdaModule(act_map(act))
-
-
-def map_nn(l):
-    return [StrModule(x) for x in l]
 
 
 class GraphNasNodeClassificationSpace(BaseSpace):

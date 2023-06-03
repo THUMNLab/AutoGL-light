@@ -24,6 +24,38 @@ def act_map(act):
         raise Exception("wrong activate function")
 
 
+class LambdaModule(nn.Module):
+    def __init__(self, lambd):
+        super().__init__()
+        self.lambd = lambd
+
+    def forward(self, x):
+        return self.lambd(x)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.lambd)
+
+
+class StrModule(nn.Module):
+    def __init__(self, lambd):
+        super().__init__()
+        self.str = lambd
+
+    def forward(self, *args, **kwargs):
+        return self.str
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.str)
+
+
+def act_map_nn(act):
+    return LambdaModule(act_map(act))
+
+
+def map_nn(l):
+    return [StrModule(x) for x in l]
+
+
 from autogllight.utils.backend import is_dgl
 
 if is_dgl():
