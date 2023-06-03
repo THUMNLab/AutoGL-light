@@ -16,3 +16,4 @@ from .single_path import SinglePathNodeClassificationSpace
 from .gasso import GassoSpace
 from .graph_nas import GraphNasNodeClassificationSpace
 from .graph_nas_macro import GraphNasMacroNodeClassificationSpace
+from .autoattend import AutoAttendNodeClassificationSpace

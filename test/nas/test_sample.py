@@ -10,6 +10,7 @@ from autogllight.nas.space import (
     GassoSpace,
     GraphNasNodeClassificationSpace,
     GraphNasMacroNodeClassificationSpace,
+    AutoAttendNodeClassificationSpace,
 )
 from autogllight.nas.algorithm import (
     RandomSearch,
@@ -127,5 +128,13 @@ if __name__ == "__main__":
     # )
     # space.instantiate()
     # algo = GraphNasRL(num_epochs=2, ctrl_steps_aggregate=2, weight_share=False)
+    # estimator = OneShotEstimator()
+    # algo.search(space, dataset, estimator)
+
+    # space = AutoAttendNodeClassificationSpace(
+    #     input_dim=input_dim, output_dim=num_classes
+    # )
+    # space.instantiate()
+    # algo = Spos(n_warmup=10, cycles = 200)
     # estimator = OneShotEstimator()
     # algo.search(space, dataset, estimator)
