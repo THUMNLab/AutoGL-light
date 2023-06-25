@@ -4,84 +4,29 @@
 import logging
 from collections import OrderedDict
 
-import time
 import numpy as np
 import torch
 
+_counter = 0
 
-def get_hardware_aware_metric(model, hardware_metric):
+_logger = logging.getLogger(__name__)
+
+
+def global_mutable_counting():
     """
-    Get architectures' hardware-aware metrics
-
-    Attributes
-    ----------
-    model : BaseSpace
-        The architecture to be evaluated
-    hardware_metric : str
-        The name of hardware-aware metric. Can be 'parameter' or 'latency'
+    A program level counter starting from 1.
     """
-
-    if hardware_metric == "parameter":
-        return count_parameters(model)
-    elif hardware_metric == "latency":
-        return measure_latency(model, 20, warmup_iters=5)
-    else:
-        raise ValueError("Unsupported hardware-aware metric")
+    global _counter
+    _counter += 1
+    return _counter
 
 
-def count_parameters(module, only_trainable=False):
-    s = sum(
-        p.numel()
-        for p in module.parameters(recurse=False)
-        if not only_trainable or p.requires_grad
-    )
-    if isinstance(module, PathSamplingLayerChoice):
-        s += sum(count_parameters(m) for m in module.sampled_choices())
-    else:
-        s += sum(count_parameters(m) for m in module.children())
-    return s
-
-
-def measure_latency(model, num_iters=200, *, warmup_iters=50):
-    device = next(model.parameters()).device
-    num_feat = model.input_dim
-    model.eval()
-    latencys = []
-    data = _build_random_data(device, num_feat)
-    with torch.no_grad():
-        try:
-            for i in range(warmup_iters + num_iters):
-                if device.type == "cuda":
-                    torch.cuda.synchronize()
-                start = time.time()
-                model(data)
-                if device.type == "cuda":
-                    torch.cuda.synchronize()
-                dt = time.time() - start
-                if i >= warmup_iters:
-                    latencys.append(dt)
-        except RuntimeError as e:
-            if "cuda" in str(e) or "CUDA" in str(e):
-                INF = 100
-                return INF
-            else:
-                raise e
-
-    return np.mean(latencys)
-
-
-def _build_random_data(device, num_feat):
-    node_nums = 3000
-    edge_nums = 10000
-
-    class Data:
-        pass
-
-    data = Data()
-    data.x = torch.randn((node_nums, num_feat)).to(device)
-    data.edge_index = torch.randint(0, node_nums, (2, edge_nums)).to(device)
-    data.num_features = num_feat
-    return data
+def _reset_global_mutable_counting():
+    """
+    Reset the global mutable counting to count from 1. Useful when defining multiple models with default keys.
+    """
+    global _counter
+    _counter = 0
 
 
 def to_device(obj, device):
@@ -194,3 +139,72 @@ class AverageMeter:
     def summary(self):
         fmtstr = "{name}: {avg" + self.fmt + "}"
         return fmtstr.format(**self.__dict__)
+
+
+class StructuredMutableTreeNode:
+    """
+    A structured representation of a search space.
+    A search space comes with a root (with `None` stored in its `mutable`), and a bunch of children in its `children`.
+    This tree can be seen as a "flattened" version of the module tree. Since nested mutable entity is not supported yet,
+    the following must be true: each subtree corresponds to a ``MutableScope`` and each leaf corresponds to a
+    ``Mutable`` (other than ``MutableScope``).
+
+    Parameters
+    ----------
+    mutable : nni.nas.pytorch.mutables.Mutable
+        The mutable that current node is linked with.
+    """
+
+    def __init__(self, mutable):
+        self.mutable = mutable
+        self.children = []
+
+    def add_child(self, mutable):
+        """
+        Add a tree node to the children list of current node.
+        """
+        self.children.append(StructuredMutableTreeNode(mutable))
+        return self.children[-1]
+
+    def type(self):
+        """
+        Return the ``type`` of mutable content.
+        """
+        return type(self.mutable)
+
+    def __iter__(self):
+        return self.traverse()
+
+    def traverse(self, order="pre", deduplicate=True, memo=None):
+        """
+        Return a generator that generates a list of mutables in this tree.
+
+        Parameters
+        ----------
+        order : str
+            pre or post. If pre, current mutable is yield before children. Otherwise after.
+        deduplicate : bool
+            If true, mutables with the same key will not appear after the first appearance.
+        memo : dict
+            An auxiliary dict that memorize keys seen before, so that deduplication is possible.
+
+        Returns
+        -------
+        generator of Mutable
+        """
+        if memo is None:
+            memo = set()
+        assert order in ["pre", "post"]
+        if order == "pre":
+            if self.mutable is not None:
+                if not deduplicate or self.mutable.key not in memo:
+                    memo.add(self.mutable.key)
+                    yield self.mutable
+        for child in self.children:
+            for m in child.traverse(order=order, deduplicate=deduplicate, memo=memo):
+                yield m
+        if order == "post":
+            if self.mutable is not None:
+                if not deduplicate or self.mutable.key not in memo:
+                    memo.add(self.mutable.key)
+                    yield self.mutable

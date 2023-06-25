@@ -5,7 +5,6 @@ Base estimator of NAS
 from abc import abstractmethod
 from ..space import BaseSpace
 from typing import Tuple
-from ...train.evaluation import Evaluation, Acc
 import torch.nn.functional as F
 import torch
 
@@ -47,7 +46,7 @@ class BaseEstimator:
 
     @abstractmethod
     def infer(
-        self, model: BaseSpace, dataset, mask="train"
+        self, model: BaseSpace, dataset, mask="train", *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Calculate the loss and metrics of given model on given dataset using

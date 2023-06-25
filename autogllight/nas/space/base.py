@@ -1,83 +1,57 @@
 from abc import abstractmethod
 import torch.nn as nn
-from nni.nas.pytorch import mutables
-from nni.nas.pytorch.fixed import FixedArchitecture
 import json
 from copy import deepcopy
 import torch
+from .nni import (
+    apply_fixed_architecture,
+    OrderedLayerChoice,
+    OrderedInputChoice,
+)
 
-class OrderedMutable:
+
+class BoxModel(nn.Module):
     """
-    An abstract class with order, enabling to sort mutables with a certain rank.
+    The box wrapping a space, can be passed to later procedure or trainer
 
     Parameters
     ----------
-    order : int
-        The order of the mutable
+    space_model : BaseSpace
+        The space which should be wrapped
+    device : str or torch.device
+        The device to place the model
     """
 
-    def __init__(self, order):
-        self.order = order
-
-
-class OrderedLayerChoice(OrderedMutable, mutables.LayerChoice):
-    def __init__(
-        self, order, op_candidates, reduction="sum", return_mask=False, key=None
-    ):
-        OrderedMutable.__init__(self, order)
-        mutables.LayerChoice.__init__(
-            self, op_candidates, reduction, return_mask, key)
-
-
-class OrderedInputChoice(OrderedMutable, mutables.InputChoice):
-    def __init__(
-        self,
-        order,
-        n_candidates=None,
-        choose_from=None,
-        n_chosen=None,
-        reduction="sum",
-        return_mask=False,
-        key=None,
-    ):
-        OrderedMutable.__init__(self, order)
-        mutables.InputChoice.__init__(
-            self, n_candidates, choose_from, n_chosen, reduction, return_mask, key
-        )
-
-
-class StrModule(nn.Module):
-    """
-    A shell used to wrap choices as nn.Module for non-one-shot space definition
-    You can use ``map_nn`` function
-
-    Parameters
-    ----------
-    name : anything
-        the name of module, can be any type
-    """
-
-    def __init__(self, name):
+    def __init__(self, space_model, *args, **kwargs):
         super().__init__()
-        self.str = name
+        self.init = True
+        self.space = []
+        self.hyperparams = {}
+        self._model = space_model
+        self.num_features = self._model.input_dim
+        self.num_classes = self._model.output_dim
+        self.params = {"num_class": self.num_classes, "features_num": self.num_features}
+        self.selection = None
+
+    def fix(self, selection):
+        """
+        To fix self._model with a selection
+
+        Parameters
+        ----------
+        selection : dict
+            A seletion indicating the choices of mutables
+        """
+        self.selection = selection
+        self._model.instantiate()
+        apply_fixed_architecture(self._model, selection, verbose=False)
+        return self
 
     def forward(self, *args, **kwargs):
-        return self.str
+        return self._model(*args, **kwargs)
 
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.str)
-
-
-def map_nn(names):
-    """
-    A function used to wrap choices as nn.Module for non-one-shot space definition
-
-    Parameters
-    ----------
-    name : list of anything
-        the names of module, can be any type
-    """
-    return [StrModule(x) for x in names]
+    def __repr__(self) -> str:
+        return str({"model": self.model, "selection": self.selection})
 
 
 class BaseSpace(nn.Module):
@@ -96,6 +70,7 @@ class BaseSpace(nn.Module):
     def __init__(self):
         super().__init__()
         self._initialized = False
+        self._default_key = 0
 
     @abstractmethod
     def forward(self, *args, **kwargs):
@@ -104,18 +79,29 @@ class BaseSpace(nn.Module):
         """
         raise NotImplementedError()
 
-    def fix(self, selection):
+    def instantiate(self, **kwargs):
         """
-        To fix self._model with a selection
+        Instantiate modules in the space
+        """
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        self.build_graph()
+        self._initialized = True
 
-        Parameters
-        ----------
-        selection : dict
-            A seletion indicating the choices of mutables
+    @abstractmethod
+    def build_graph(self):
         """
-        self.selection = selection
-        apply_fixed_architecture(self, selection, verbose=False)
-        return self
+        Instantiate the operation graph in the space
+        """
+        raise NotImplementedError()
+
+    def getOriKey(self, key):
+        orikey = key
+        if orikey == None:
+            key = f"default_key_{self._default_key}"
+            self._default_key += 1
+            orikey = key
+        return orikey
 
     def setLayerChoice(
         self, order, op_candidates, reduction="sum", return_mask=False, key=None
@@ -123,13 +109,9 @@ class BaseSpace(nn.Module):
         """
         Give a unique key if not given
         """
-        orikey = key
-        if orikey == None:
-            key = f"default_key_{self._default_key}"
-            self._default_key += 1
-            orikey = key
-        layer = OrderedLayerChoice(
-            order, op_candidates, reduction, return_mask, orikey)
+        key = self.getOriKey(key)
+        layer = OrderedLayerChoice(order, op_candidates, reduction, return_mask, key)
+        setattr(self, key, layer)
         return layer
 
     def setInputChoice(
@@ -145,119 +127,28 @@ class BaseSpace(nn.Module):
         """
         Give a unique key if not given
         """
-        orikey = key
-        if orikey == None:
-            key = f"default_key_{self._default_key}"
-            self._default_key += 1
-            orikey = key
+        key = self.getOriKey(key)
         layer = OrderedInputChoice(
-            order, n_candidates, choose_from, n_chosen, reduction, return_mask, orikey
+            order, n_candidates, choose_from, n_chosen, reduction, return_mask, key
         )
+        setattr(self, key, layer)
         return layer
 
-class FixedInputChoice(nn.Module):
-    """
-    Use to replace `InputChoice` Mutable in fix process
+    def wrap(self):
+        return BoxModel(self)
 
-    Parameters
-    ----------
-    mask : list
-        The mask indicating which input to choose
-    """
-
-    def __init__(self, mask):
-        self.mask_len = len(mask)
-        for i in range(self.mask_len):
-            if mask[i]:
-                self.selected = i
-                break
-        super().__init__()
-
-    def forward(self, optional_inputs):
-        if len(optional_inputs) == self.mask_len:
-            return optional_inputs[self.selected]
-
-
-class CleanFixedArchitecture(FixedArchitecture):
-    """
-    Fixed architecture mutator that always selects a certain graph, allowing deepcopy
-
-    Parameters
-    ----------
-    model : nn.Module
-        A mutable network.
-    fixed_arc : dict
-        Preloaded architecture object.
-    strict : bool
-        Force everything that appears in ``fixed_arc`` to be used at least once.
-    verbose : bool
-        Print log messages if set to True
-    """
-
-    def __init__(self, model, fixed_arc, strict=True, verbose=True):
-        super().__init__(model, fixed_arc, strict, verbose)
-
-    def replace_all_choice(self, module=None, prefix=""):
+    def parse_model(self, selection):
+        """Get the fixed model from the selection
+        Usage: the fixed model can be obtained by boxmodel._model 
+        Warning : this method will randomize the learnable parameters in the model, as the model is re-instantiated.
         """
-        Replace all choices with selected candidates. It's done with best effort.
-        In case of weighted choices or multiple choices. if some of the choices on weighted with zero, delete them.
-        If single choice, replace the module with a normal module.
-
-        Parameters
-        ----------
-        module : nn.Module
-            Module to be processed.
-        prefix : str
-            Module name under global namespace.
-        """
-        
-        if module is None:
-            module = self.model
-        for name, mutable in module.named_children():
-            global_name = (prefix + "." if prefix else "") + name
-            if isinstance(mutable, OrderedLayerChoice):
-                chosen = self._fixed_arc[mutable.key]
-                if sum(chosen) == 1 and max(chosen) == 1 and not mutable.return_mask:
-                    # sum is one, max is one, there has to be an only one
-                    # this is compatible with both integer arrays, boolean arrays and float arrays
-                    setattr(module, name, mutable[chosen.index(1)])
-                else:
-                    # remove unused parameters
-                    for ch, n in zip(chosen, mutable.names):
-                        if ch == 0 and not isinstance(ch, float):
-                            setattr(mutable, n, None)
-            elif isinstance(mutable, OrderedInputChoice):
-                chosen = self._fixed_arc[mutable.key]
-                setattr(module, name, FixedInputChoice(chosen))
-            else:
-                self.replace_all_choice(mutable, global_name)
+        boxmodel = self.wrap().fix(selection)
+        return boxmodel
 
 
-def apply_fixed_architecture(model, fixed_arc, verbose=True):
-    """
-    Load architecture from `fixed_arc` and apply to model.
-
-    Parameters
-    ----------
-    model : torch.nn.Module
-        Model with mutables.
-    fixed_arc : str or dict
-        Path to the JSON that stores the architecture, or dict that stores the exported architecture.
-    verbose : bool
-        Print log messages if set to True
-
-    Returns
-    -------
-    FixedArchitecture
-        Mutator that is responsible for fixes the graph.
-    """
-
-    if isinstance(fixed_arc, str):
-        with open(fixed_arc) as f:
-            fixed_arc = json.load(f)
-    architecture = CleanFixedArchitecture(model, fixed_arc, verbose)
-    architecture.reset()
-
-    # for the convenience of parameters counting
-    architecture.replace_all_choice()
-    return architecture
+"""
+BoxModel is the space itself, but without replacing the operation choices.
+Therefore, the choices in BoxModel is subclasses of Mutables, which can be collected in functions like apply_fixed_architecture.
+In this way, the fixed architecture "BoxModel" will get fixed operations, while the original space will not be changed.
+Moreover, the fixed architecture "BoxModel" will not have multiple operations mixed together as in DARTS.  
+"""
