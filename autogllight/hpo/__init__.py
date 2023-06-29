@@ -31,7 +31,7 @@ from .rand_advisor import RandAdvisor
 from .tpe_advisorhpo import TpeAdvisorHPO
 
 
-def build_hpo_from_name(name: str) -> BaseHPOptimizer:
+def build_hpo_from_name(name: str, *args, **kwargs) -> BaseHPOptimizer:
     """
     Parameters
     ----------
@@ -49,7 +49,7 @@ def build_hpo_from_name(name: str) -> BaseHPOptimizer:
         If an invalid name is passed in
     """
     assert name in HPO_DICT, "HPO module do not have name " + name
-    return HPO_DICT[name]()
+    return HPO_DICT[name](*args, **kwargs)
 
 
 __all__ = [

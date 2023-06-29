@@ -135,7 +135,7 @@ class AdvisorBaseHPOptimizer(BaseHPOptimizer):
 
         print("HPO Search Phase:\n")
         for i in trange(self.max_evals):
-            if time.time() - start_time > self.time_limit:
+            if self.time_limit is not None and time.time() - start_time > self.time_limit:
                 self.logger.info("Time out of limit, Epoch: {}".format(str(i)))
                 break
             new_trials = self.method.get_new_suggestions(
@@ -163,6 +163,6 @@ class AdvisorBaseHPOptimizer(BaseHPOptimizer):
             )
 
         best_perf = self.trials[best_id].objective_value
-        self.logger.info("Best Parameter:")
+        # self.logger.info("Best Parameter:")
 
         return best_hp, best_perf
