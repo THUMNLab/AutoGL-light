@@ -6,15 +6,16 @@ import random
 import time
 
 import numpy as np
-from autogl.backend import DependentBackend
+# from autogl.backend import DependentBackend
 from tqdm import trange
 
-from ..feature import NetLSD as SgNetLSD
+# from ..feature import NetLSD as SgNetLSD
 from . import register_hpo
 from .autone_file import utils
 from .base import BaseHPOptimizer, TimeTooLimitedError
 
-_isdgl = DependentBackend.is_dgl()
+# _isdgl = DependentBackend.is_dgl()
+_isdgl = False
 if _isdgl:
     import dgl
 else:
