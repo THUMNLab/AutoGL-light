@@ -8,8 +8,7 @@ import pickle
 
 from torch_geometric.nn import GCNConv
 from .base import EarlyStopping
-from ..hpo import build_hpo_from_name
-from ..hpo.base import LogRangeHP
+from autogllight.hpo import build_hpo_from_name, LogRangeHP
 
 # pyg version
 
@@ -51,8 +50,6 @@ class Trainer:
     def set_hp(self, hps: dict):
         for i in hps:
             setattr(self, i, hps[i])
-        #self.lr = hps['lr']
-        #self.epoch = hps['epoch']
 
     def _initialize(self):
         self.encoder.initialize()
@@ -89,12 +86,6 @@ class Trainer:
                     LOGGER.debug("Early stopping at %d", epoch)
                     break
 
-    # def get_loss(self, model):
-    #     mask = self.data.train_mask
-    #     pred = model(self.data)
-    #     loss = F.cross_entropy(pred[mask], self.data.y[mask])
-    #     return loss
-
     @torch.no_grad()
     def evaluate(self):
         """
@@ -109,14 +100,11 @@ class Trainer:
         acc = (pred.argmax(1) == self.data.y)[mask].float().mean()
         return acc.item()
 
-
-def test_node_trainer():
+def do_train_without_hpo():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # dataset = build_dataset_from_name("cora")
-    # dataset = to_pyg_dataset(dataset)
     from torch_geometric.datasets import Planetoid
-    dataset = Planetoid(root='/home/jcai/code/multimodal_graph_ood/AutoGL-light-main/autogllight/data', name='Cora')
+    dataset = Planetoid(root='~/data/', name='Cora')
 
     num_features = dataset[0].x.size(1)
     num_classes = dataset[0].y.max().item() + 1
@@ -133,26 +121,15 @@ def test_node_trainer():
         device=device,
     )
 
-    # node_trainer.num_features = dataset[0].x.size(1)
-    # node_trainer.num_classes = dataset[0].y.max().item() + 1
-    # node_trainer.initialize()
-
-    # print(node_trainer.encoder.encoder)
-    # print(node_trainer.decoder.decoder)
-
     node_trainer.train()
     result = node_trainer.evaluate()
     print("Acc:", result)
 
-# test_node_trainer()
-
-def test_hpo():
+def do_hpo():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # dataset = build_dataset_from_name("cora")
-    # dataset = to_pyg_dataset(dataset)
     from torch_geometric.datasets import Planetoid
-    dataset = Planetoid(root='/home/jcai/code/multimodal_graph_ood/AutoGL-light-main/autogllight/data', name='Cora')
+    dataset = Planetoid(root='~/data/', name='Cora')
 
     num_features = dataset[0].x.size(1)
     num_classes = dataset[0].y.max().item() + 1
@@ -184,4 +161,4 @@ def test_hpo():
     hpo = build_hpo_from_name("tpe", hp_space, f)
     print(hpo.optimize())
 
-test_hpo()
+do_hpo()

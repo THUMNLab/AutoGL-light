@@ -20,10 +20,11 @@ from tqdm import trange
 if __name__ == "__main__":
     set_seed(0)
 
-    dataname = "cora"
-    dataset = Planetoid(
-        osp.expanduser("~/.cache-autogl"), dataname, transform=T.NormalizeFeatures()
-    )
+    #dataname = "cora"
+    #dataset = Planetoid(
+    #    osp.expanduser("~/.cache-autogl"), dataname, transform=T.NormalizeFeatures()
+    #)
+    dataset = Planetoid(root='~/data/', name='Cora')
     data = dataset[0]
     label = data.y
     input_dim = data.x.shape[-1]

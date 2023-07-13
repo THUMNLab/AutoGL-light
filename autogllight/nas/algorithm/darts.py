@@ -100,6 +100,7 @@ class Darts(BaseNAS):
                 bar.set_postfix(loss=loss.item(), **metric)
 
         selection = self.export(nas_modules)
+        print(selection)
         return space.parse_model(selection)
 
     def _train_one_epoch(

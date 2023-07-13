@@ -14,10 +14,11 @@ import torch_geometric.transforms as T
 
 
 def test_autoattend():
-    dataname = "cora"
-    dataset = Planetoid(
-        osp.expanduser("~/.cache-autogl"), dataname, transform=T.NormalizeFeatures()
-    )
+    #dataname = "cora"
+    #dataset = Planetoid(
+    #    osp.expanduser("~/.cache-autogl"), dataname, transform=T.NormalizeFeatures()
+    #)
+    dataset = Planetoid(root='~/data/', name='Cora')
     data = dataset[0]
     label = data.y
     input_dim = data.x.shape[-1]
@@ -30,3 +31,5 @@ def test_autoattend():
     algo = Spos(n_warmup=10, cycles=200)
     estimator = OneShotEstimator()
     algo.search(space, dataset, estimator)
+
+test_autoattend()

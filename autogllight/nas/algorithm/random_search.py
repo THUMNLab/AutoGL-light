@@ -83,6 +83,7 @@ class RandomSearch(BaseNAS):
                     cache[vec] = metric
                 bar.set_postfix(acc=metric, max_acc=max(cache.values()))
         selection = arch_perfs[np.argmax([x[0] for x in arch_perfs])][1]
+        print(selection)
         arch = space.parse_model(selection)
         return arch
 

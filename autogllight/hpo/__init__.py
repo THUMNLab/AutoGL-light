@@ -1,6 +1,6 @@
 import importlib
 import os
-from .base import BaseHPOptimizer
+from .base import BaseHPOptimizer, RangeHP, LogRangeHP, ChoiceHP
 from .auto_module import AutoModule
 
 HPO_DICT = {}
