@@ -1,7 +1,5 @@
 # "Graph Neural Architecture Search Under Distribution Shifts" ICML 22'
 
-import logging
-
 import torch
 from tqdm import trange
 
@@ -76,51 +74,15 @@ class Graces(BaseNAS):
             gnn0_optimizer.step()
             arch_optimizer.step()
 
-    # gasso
-    # def _infer(self, model: BaseSpace, dataset, estimator: BaseEstimator, mask="train"):
-    #     metric, loss = estimator.infer(model, dataset, mask=mask, adjs=self.adjs)
-    #     return metric, loss
-
     def _infer(self, mask="train"):
-        self.space.eval()
-
-        def evaluate(loader):
-            y_true = []
-            y_pred = []
-
-            for batch in loader:
-                batch = batch.to(self.device)
-
-                # if batch.x.shape[0] == 1:
-                #     pass
-                # else:
-                with torch.no_grad():
-                    _, pred, _, _ = self.space(batch)
-                    y_true.append(batch.y.view(pred.shape).detach().cpu())
-                    y_pred.append(pred.detach().cpu())
-
-            y_true = torch.cat(y_true, dim=0)
-            y_pred = torch.cat(y_pred, dim=0)
-
-            loss = self.criterion(
-                y_pred.to(torch.float32), y_true.to(torch.float32)
-            ).item()
-
-            y_true, y_pred = y_true.numpy(), y_pred.numpy()
-
-            input_dict = {"y_true": y_true, "y_pred": y_pred}
-            perf = self.estimator.eval(input_dict)
-            return perf["rocauc"], loss
-
         if mask == "train":
             dataloader = self.train_loader
         elif mask == "val":
             dataloader = self.val_loader
         elif mask == "test":
             dataloader = self.test_loader
-
-        auc, loss = evaluate(dataloader)
-        return auc, loss
+        metric, loss = self.estimator.infer(self.space, dataloader)
+        return metric, loss
 
     def prepare(self, data):
         """
@@ -159,10 +121,7 @@ class Graces(BaseNAS):
         )
 
         self.criterion = torch.nn.BCEWithLogitsLoss()
-
         eta = self.args.eta
-
-        # Train model
         best_performance = 0
         min_val_loss = float("inf")
 
@@ -172,11 +131,9 @@ class Graces(BaseNAS):
                 space training
                 """
                 self.space.train()
-
                 eta = (
                     self.args.eta_max - self.args.eta
                 ) * epoch / self.num_epochs + self.args.eta
-
                 optimizer.zero_grad()
                 arch_optimizer.zero_grad()
                 gnn0_optimizer.zero_grad()
@@ -194,22 +151,25 @@ class Graces(BaseNAS):
                 space evaluation
                 """
                 self.space.eval()
-                train_auc, train_loss = self._infer("train")
-                val_auc, val_loss = self._infer("val")
-                # test_auc, test_loss = self._infer("test")
+                train_metric, train_loss = self._infer("train")
+                val_metric, val_loss = self._infer("val")
+                # test_metric, test_loss = self._infer("test")
 
                 if min_val_loss > val_loss:
-                    min_val_loss, best_performance = val_loss, val_auc
+                    min_val_loss, best_performance = val_loss, val_metric["auc"]
                     self.space.keep_prediction()
 
-                bar.set_postfix(train_auc=train_auc, val_auc=val_auc)
-                # bar.set_postfix(
-                #     {"train_acc": train_auc, "val_auc": val_auc, "test_auc": test_auc}
-                # )
+                bar.set_postfix(
+                    {
+                        "train_auc": train_metric["auc"],
+                        "val_auc": val_metric["auc"],
+                        # "test_auc": test_metric["auc"],
+                    }
+                )
 
         return best_performance, min_val_loss
 
-    def search(self, space: BaseSpace, dataset, estimator):
+    def search(self, space: BaseSpace, dataset, estimator: BaseEstimator):
         self.estimator = estimator
         self.space = space.to(self.device)
         self.prepare(dataset)

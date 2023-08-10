@@ -2,24 +2,18 @@ import argparse
 import os
 import sys
 
-from graces_dataset import load_data
-
+import torch
 from autogllight.nas.algorithm import Graces
+from autogllight.nas.estimator import OneShotOGBEstimator
 from autogllight.nas.space import GracesSpace
-from autogllight.utils import *
+from autogllight.utils import set_seed
+from autogllight.utils.evaluation import Auc
+
+from graces_dataset import load_data
 
 sys.path.append("..")
 sys.path.append(".")
 os.environ["AUTOGL_BACKEND"] = "pyg"
-
-
-# from autogllight.nas.estimator import OneShotEstimator, TrainScratchEstimator
-# from autogllight.utils.evaluation import Auc_ogb
-
-# OgbEstimator,
-
-
-# Graces
 
 
 def parser_args():
@@ -297,10 +291,9 @@ if __name__ == "__main__":
     num_features = data[0].num_features
     num_classes = data[0].num_tasks
 
-    from ogb.graphproppred import Evaluator
-
-    estimator_ogb = Evaluator("ogbg-molbace")
-    # estimator = OneShotEstimator(evaluation=Auc_ogb)
+    estimator = OneShotOGBEstimator(
+        loss_f="binary_cross_entropy_with_logits", evaluation=[Auc()]
+    )
 
     space = GracesSpace(
         input_dim=num_features,
@@ -313,10 +306,5 @@ if __name__ == "__main__":
     )
 
     space.instantiate()
-    # print(space.model)
-    # exit()
-
     algo = Graces(num_epochs=args.epochs, args=args)
-
-    algo.search(space, data, estimator_ogb)
-    # algo.search(space, data, estimator)
+    algo.search(space, data, estimator)
