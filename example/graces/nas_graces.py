@@ -1,29 +1,21 @@
 import argparse
 import os
-import random
 import sys
-from os import path as osp
 
-import numpy as np
-import torch_geometric.transforms as T
-import yaml
 from graces_dataset import load_data
-from torch_geometric.datasets import Planetoid
-from tqdm import trange
 
-from autogllight.nas.algorithm import Gasso, Graces, RandomSearch
-from autogllight.nas.estimator import OneShotEstimator, TrainScratchEstimator
-from autogllight.nas.space import (
-    GassoSpace,
-    GracesSpace,
-    SinglePathNodeClassificationSpace,
-)
+from autogllight.nas.algorithm import Graces
+from autogllight.nas.space import GracesSpace
 from autogllight.utils import *
-# from autogllight.utils.evaluation import Auc_ogb
 
 sys.path.append("..")
 sys.path.append(".")
 os.environ["AUTOGL_BACKEND"] = "pyg"
+
+
+# from autogllight.nas.estimator import OneShotEstimator, TrainScratchEstimator
+# from autogllight.utils.evaluation import Auc_ogb
+
 # OgbEstimator,
 
 
@@ -176,13 +168,6 @@ def parser_args():
     )
     parser.add_argument(
         "--withoutjk", action="store_true", default=False, help="remove la aggregtor"
-    )
-    parser.add_argument(
-        "--alpha_mode",
-        type=str,
-        default="train_loss",
-        help="how to update alpha",
-        choices=["train_loss", "valid_loss", "valid_acc"],
     )
     parser.add_argument(
         "--search_act",

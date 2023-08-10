@@ -1,7 +1,6 @@
 # "Graph Neural Architecture Search Under Distribution Shifts" ICML 22'
 
 import logging
-from itertools import cycle
 
 import torch
 from tqdm import trange
@@ -35,44 +34,27 @@ class Graces(BaseNAS):
         self.disable_progress = disable_progress
         self.args = args
 
-    def _infer(self, model: BaseSpace, dataset, estimator: BaseEstimator, mask="train"):
-        metric, loss = estimator.infer(model, dataset, mask=mask, adjs=self.adjs)
-        return metric, loss
-
     def train_graph(
         self,
-        data,
-        model,
         criterion,
         model_optimizer,
         arch_optimizer,
         gnn0_optimizer,
         eta,
     ):
-        model.train()
-        total_loss = 0
-        accuracy = 0
-        # data:[dataset, train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
-        train_iters = data[4].__len__() // self.args.w_update_epoch + 1
-        print(
-            "train_iters:{},train_data_num:{}".format(
-                train_iters, range(train_iters * self.args.w_update_epoch)
-            )
-        )
+        self.space.train()
 
-        zip_valid_data = list(zip(range(train_iters), cycle(data[5])))
-
-        for id, train_data in enumerate(data[4]):
+        for id, train_data in enumerate(self.train_loader):
             model_optimizer.zero_grad()
             arch_optimizer.zero_grad()
             gnn0_optimizer.zero_grad()
             train_data = train_data.to(self.device)
 
             if id % 15 == 5:
-                model.ag.set = "train"
+                self.space.ag.set = "train"
             else:
-                model.ag.set = "nooutput"
-            output0, output, cosloss, sslout = model(train_data)
+                self.space.ag.set = "nooutput"
+            output0, output, cosloss, sslout = self.space(train_data)
             output0 = output0.to(self.device)
             output = output.to(self.device)
 
@@ -93,30 +75,38 @@ class Graces(BaseNAS):
             my_loss = (1 - eta) * (
                 error_loss0 + self.args.gamma * sslloss + self.args.beta * cosloss
             ) + eta * error_loss
-            total_loss += my_loss.item()
 
             my_loss.backward()
             model_optimizer.step()
             gnn0_optimizer.step()
+            arch_optimizer.step()
 
-            if self.args.alpha_mode == "train_loss":
-                arch_optimizer.step()
+    def get_valid_loss(self, criterion):
+        self.space.train()
+        total_loss = 0
+        accuracy = 0
+        for train_data in self.val_loader:
+            train_data = train_data.to(self.device)
 
-            if self.args.alpha_mode == "valid_loss":
-                valid_data = zip_valid_data[iter][1].to(self.device)
-                model_optimizer.zero_grad()
-                arch_optimizer.zero_grad()
-                output = model(valid_data)
-                output = output.to(self.device)
+            self.space.ag.set = "valid"
+            output0, output, cosloss, sslout = self.space(train_data)
+            output = output.to(self.device)
 
-                error_loss = criterion(output, valid_data.y.view(-1))
-                error_loss.backward()
-                arch_optimizer.step()
+            error_loss = criterion(
+                output.to(torch.float32), train_data.y.to(torch.float32)
+            )
 
-        return accuracy / len(data[4].dataset), total_loss / len(data[4].dataset)
+            total_loss += error_loss.item()
 
-    def infer_graph_ogbg(self, data_, model, evaluator):
-        model.eval()
+        return total_loss / len(self.val_loader.dataset)
+
+    # gasso
+    # def _infer(self, model: BaseSpace, dataset, estimator: BaseEstimator, mask="train"):
+    #     metric, loss = estimator.infer(model, dataset, mask=mask, adjs=self.adjs)
+    #     return metric, loss
+
+    def _infer(self, mask="train"):
+        self.space.eval()
 
         def evaluate(loader):
             y_true = []
@@ -130,7 +120,7 @@ class Graces(BaseNAS):
                     pass
                 else:
                     with torch.no_grad():
-                        pred0, pred, _, _ = model(batch)
+                        pred0, pred, _, _ = self.space(batch)
 
                     y_true.append(batch.y.view(pred.shape).detach().cpu())
                     y_pred0.append(pred0.detach().cpu())
@@ -141,61 +131,47 @@ class Graces(BaseNAS):
             y_pred = torch.cat(y_pred, dim=0).numpy()
 
             input_dict = {"y_true": y_true, "y_pred": y_pred0}
-            perf0 = evaluator.eval(input_dict)
+            perf0 = self.estimator.eval(input_dict)
             input_dict = {"y_true": y_true, "y_pred": y_pred}
-            # print(y_pred)
-            # print(y_true)
-            perf = evaluator.eval(input_dict)
+            perf = self.estimator.eval(input_dict)
             return perf0, perf
 
-        p0, p = evaluate(data_[4])
-        train_perf0, train_perf = p0["rocauc"], p["rocauc"]
-        p0, p = evaluate(data_[5])
-        val_perf0, val_perf = p0["rocauc"], p["rocauc"]
-        p0, p = evaluate(data_[6])
-        test_perf0, test_perf = p0["rocauc"], p["rocauc"]
-        return train_perf0, train_perf, val_perf0, val_perf, test_perf0, test_perf
+        if mask == "train":
+            dataloader = self.train_loader
+        elif mask == "val":
+            dataloader = self.val_loader
+        elif mask == "test":
+            dataloader = self.test_loader
 
-    def get_valid_loss(self, data, model, criterion):
-        model.train()
-        total_loss = 0
-        accuracy = 0
-        train_iters = data[4].__len__() // self.args.w_update_epoch + 1
+        p0, p = evaluate(dataloader)
+        perf0, perf = p0["rocauc"], p["rocauc"]
+        return perf0, perf
 
-        for train_data in data[5]:
-            train_data = train_data.to(self.device)
+    def prepare(self, data):
+        """
+        data : list of data objects.
+            [dataset, train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader]
+        """
+        self.train_loader = data[4]
+        self.val_loader = data[5]
+        self.test_loader = data[6]
 
-            model.ag.set = "valid"
-            output0, output, cosloss, sslout = model(train_data)
-            output = output.to(self.device)
-
-            error_loss = criterion(
-                output.to(torch.float32), train_data.y.to(torch.float32)
-            )
-
-            total_loss += error_loss.item()
-
-        return total_loss / len(data[5].dataset)
-
-    def fit(self, data):
+    def fit(self):
         optimizer = torch.optim.Adam(
             self.space.supernet.parameters(),
             self.args.learning_rate,
             weight_decay=self.args.weight_decay,
         )
-
         arch_optimizer = torch.optim.Adam(
             self.space.ag.parameters(),
             self.args.arch_learning_rate,
             weight_decay=self.args.arch_weight_decay,
         )
-
         gnn0_optimizer = torch.optim.Adam(
             self.space.supernet0.parameters(),
             self.args.gnn0_learning_rate,
             weight_decay=self.args.gnn0_weight_decay,
         )
-
         scheduler_arch = torch.optim.lr_scheduler.CosineAnnealingLR(
             arch_optimizer,
             float(self.num_epochs),
@@ -218,7 +194,9 @@ class Graces(BaseNAS):
 
         with trange(self.num_epochs, disable=self.disable_progress) as bar:
             for epoch in bar:
-                """space training"""
+                """
+                space training
+                """
                 self.space.train()
 
                 eta = (
@@ -229,9 +207,7 @@ class Graces(BaseNAS):
                 arch_optimizer.zero_grad()
                 gnn0_optimizer.zero_grad()
 
-                train_acc, train_obj = self.train_graph(
-                    data,
-                    self.space,
+                self.train_graph(
                     criterion,
                     optimizer,
                     arch_optimizer,
@@ -241,67 +217,26 @@ class Graces(BaseNAS):
                 scheduler_arch.step()
                 scheduler_gnn0.step()
 
-                """space evaluation"""
+                """
+                space evaluation
+                """
                 self.space.eval()
 
-                (
-                    train_acc0,
-                    train_acc,
-                    valid_acc0,
-                    valid_acc,
-                    test_acc0,
-                    test_acc,
-                ) = self.infer_graph_ogbg(data, self.space, self.estimator)
-                valid_loss = self.get_valid_loss(data, self.space, criterion)
+                train_acc0, train_auc = self._infer("train")
+                valid_acc0, valid_auc = self._infer("val")
+                test_acc0, test_auc = self._infer("test")
+
+                valid_loss = self.get_valid_loss(criterion)
 
                 if min_val_loss > valid_loss:
-                    min_val_loss, best_test = valid_loss, test_acc
-                    patience = 0
-                else:
-                    patience += 1
-                    if patience == 1000:
-                        break
+                    min_val_loss, best_test = valid_loss, test_auc
+                    self.space.keep_prediction()
 
-                if epoch % 1 == 0:
-                    logging.info(
-                        "epoch=%s, train_acc=%f, train_loss=%f, valid_acc=%f, test_acc=%f, explore_num=%s",
-                        epoch,
-                        train_acc,
-                        train_obj,
-                        valid_acc,
-                        test_acc,
-                        self.space.explore_num,
-                    )
-                    print(
-                        "epochACC0={}, train_acc={:.04f}, train_loss={:.04f},valid_acc={:.04f},test_acc={:.04f},explore_num={}".format(
-                            epoch,
-                            train_acc0,
-                            train_obj,
-                            valid_acc0,
-                            test_acc0,
-                            self.space.explore_num,
-                        )
-                    )
-                    print(
-                        "epoch={}, train_acc={:.04f}, train_loss={:.04f},valid_acc={:.04f},test_acc={:.04f},explore_num={}".format(
-                            epoch,
-                            train_acc,
-                            train_obj,
-                            valid_acc,
-                            test_acc,
-                            self.space.explore_num,
-                        )
-                    )
-
-                # train_acc, _ = self._infer(self.space, data, self.estimator, "train")
-                # val_acc, val_loss = self._infer(self.space, data, self.estimator, "val")
-                # if val_loss < min_val_loss:
-                #     min_val_loss = val_loss
-                #     best_performance = val_acc
-                #     # self.space.keep_prediction()
-
-                # bar.set_postfix(train_acc=train_acc["acc"], val_acc=val_acc["acc"])
-                bar.set_postfix(train_acc=train_acc, val_acc=valid_loss)
+                # bar.set_postfix(train_acc=train_acc, val_acc=valid_acc)
+                bar.set_postfix(
+                    {"train_acc": train_auc, "val_auc": valid_auc, "test_auc": test_auc}
+                )
+                # bar.set_postfix(train_auc=train_auc, val_auc=valid_auc)
                 # print("acc:" + str(train_acc) + " val_acc" + str(val_acc))
 
         return best_performance, min_val_loss
@@ -309,5 +244,6 @@ class Graces(BaseNAS):
     def search(self, space: BaseSpace, dataset, estimator):
         self.estimator = estimator
         self.space = space.to(self.device)
-        perf, val_loss = self.fit(dataset)
+        self.prepare(dataset)
+        perf, val_loss = self.fit()
         return space.parse_model(None)

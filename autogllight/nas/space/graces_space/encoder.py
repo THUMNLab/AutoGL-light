@@ -70,7 +70,7 @@ class Disen3Head(nn.Module):
     xs = x.hsplit(self.k)
     for i in range(3):
       z = self.ops[i](xs[i])
-      z = 0.05 + 0.35 * F.sigmoid(z)
+      z = 0.05 + 0.35 * torch.sigmoid(z)
       mixed_res.append(z)
     res = torch.hstack(mixed_res)
     return res
