@@ -116,14 +116,12 @@ def parser_args():
         default=0.08,
         help="learning rate for arch encoding",
     )
-    # parser.add_argument('--arch_learning_rate', type=float, default=0.08, help='learning rate for arch encoding')
     parser.add_argument(
         "--arch_learning_rate_min",
         type=float,
         default=0.0,
         help="minimum learning rate for arch encoding",
     )
-    # parser.add_argument('--cos_arch_lr', action='store_true', default=False, help='lr decay for learning rate')
     parser.add_argument(
         "--arch_weight_decay",
         type=float,
@@ -184,9 +182,6 @@ def parser_args():
     parser.add_argument(
         "--graph_dim", type=int, default=8, help="default hidden_size in supernet"
     )
-    # parser.add_argument('--attention_dim',  type=int, default=16, help='default hidden_size in supernet')
-    # parser.add_argument('--layer_emb_dim',  type=int, default=16, help='default hidden_size in supernet')
-    # parser.add_argument('--op_dim',  type=int, default=16, help='default hidden_size in supernet')
     parser.add_argument(
         "--attention_dropout",
         type=float,
@@ -301,8 +296,6 @@ if __name__ == "__main__":
 
     num_features = data[0].num_features
     num_classes = data[0].num_tasks
-
-    criterion = torch.nn.BCEWithLogitsLoss()
 
     from ogb.graphproppred import Evaluator
 

@@ -36,7 +36,6 @@ class Graces(BaseNAS):
 
     def train_graph(
         self,
-        criterion,
         model_optimizer,
         arch_optimizer,
         gnn0_optimizer,
@@ -50,20 +49,16 @@ class Graces(BaseNAS):
             gnn0_optimizer.zero_grad()
             train_data = train_data.to(self.device)
 
-            if id % 15 == 5:
-                self.space.ag.set = "train"
-            else:
-                self.space.ag.set = "nooutput"
             output0, output, cosloss, sslout = self.space(train_data)
             output0 = output0.to(self.device)
             output = output.to(self.device)
 
             is_labeled = train_data.y == train_data.y
-            error_loss0 = criterion(
+            error_loss0 = self.criterion(
                 output0.to(torch.float32)[is_labeled],
                 train_data.y.to(torch.float32)[is_labeled],
             )
-            error_loss = criterion(
+            error_loss = self.criterion(
                 output.to(torch.float32)[is_labeled],
                 train_data.y.to(torch.float32)[is_labeled],
             )
@@ -81,25 +76,6 @@ class Graces(BaseNAS):
             gnn0_optimizer.step()
             arch_optimizer.step()
 
-    def get_valid_loss(self, criterion):
-        self.space.train()
-        total_loss = 0
-        accuracy = 0
-        for train_data in self.val_loader:
-            train_data = train_data.to(self.device)
-
-            self.space.ag.set = "valid"
-            output0, output, cosloss, sslout = self.space(train_data)
-            output = output.to(self.device)
-
-            error_loss = criterion(
-                output.to(torch.float32), train_data.y.to(torch.float32)
-            )
-
-            total_loss += error_loss.item()
-
-        return total_loss / len(self.val_loader.dataset)
-
     # gasso
     # def _infer(self, model: BaseSpace, dataset, estimator: BaseEstimator, mask="train"):
     #     metric, loss = estimator.infer(model, dataset, mask=mask, adjs=self.adjs)
@@ -110,31 +86,31 @@ class Graces(BaseNAS):
 
         def evaluate(loader):
             y_true = []
-            y_pred0 = []
             y_pred = []
 
-            for step, batch in enumerate(loader):
+            for batch in loader:
                 batch = batch.to(self.device)
 
-                if batch.x.shape[0] == 1:
-                    pass
-                else:
-                    with torch.no_grad():
-                        pred0, pred, _, _ = self.space(batch)
-
+                # if batch.x.shape[0] == 1:
+                #     pass
+                # else:
+                with torch.no_grad():
+                    _, pred, _, _ = self.space(batch)
                     y_true.append(batch.y.view(pred.shape).detach().cpu())
-                    y_pred0.append(pred0.detach().cpu())
                     y_pred.append(pred.detach().cpu())
 
-            y_true = torch.cat(y_true, dim=0).numpy()
-            y_pred0 = torch.cat(y_pred0, dim=0).numpy()
-            y_pred = torch.cat(y_pred, dim=0).numpy()
+            y_true = torch.cat(y_true, dim=0)
+            y_pred = torch.cat(y_pred, dim=0)
 
-            input_dict = {"y_true": y_true, "y_pred": y_pred0}
-            perf0 = self.estimator.eval(input_dict)
+            loss = self.criterion(
+                y_pred.to(torch.float32), y_true.to(torch.float32)
+            ).item()
+
+            y_true, y_pred = y_true.numpy(), y_pred.numpy()
+
             input_dict = {"y_true": y_true, "y_pred": y_pred}
             perf = self.estimator.eval(input_dict)
-            return perf0, perf
+            return perf["rocauc"], loss
 
         if mask == "train":
             dataloader = self.train_loader
@@ -143,9 +119,8 @@ class Graces(BaseNAS):
         elif mask == "test":
             dataloader = self.test_loader
 
-        p0, p = evaluate(dataloader)
-        perf0, perf = p0["rocauc"], p["rocauc"]
-        return perf0, perf
+        auc, loss = evaluate(dataloader)
+        return auc, loss
 
     def prepare(self, data):
         """
@@ -183,14 +158,13 @@ class Graces(BaseNAS):
             eta_min=self.args.gnn0_learning_rate_min,
         )
 
-        criterion = torch.nn.BCEWithLogitsLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
         eta = self.args.eta
 
         # Train model
         best_performance = 0
         min_val_loss = float("inf")
-        min_train_loss = float("inf")
 
         with trange(self.num_epochs, disable=self.disable_progress) as bar:
             for epoch in bar:
@@ -208,7 +182,6 @@ class Graces(BaseNAS):
                 gnn0_optimizer.zero_grad()
 
                 self.train_graph(
-                    criterion,
                     optimizer,
                     arch_optimizer,
                     gnn0_optimizer,
@@ -221,23 +194,18 @@ class Graces(BaseNAS):
                 space evaluation
                 """
                 self.space.eval()
+                train_auc, train_loss = self._infer("train")
+                val_auc, val_loss = self._infer("val")
+                # test_auc, test_loss = self._infer("test")
 
-                train_acc0, train_auc = self._infer("train")
-                valid_acc0, valid_auc = self._infer("val")
-                test_acc0, test_auc = self._infer("test")
-
-                valid_loss = self.get_valid_loss(criterion)
-
-                if min_val_loss > valid_loss:
-                    min_val_loss, best_test = valid_loss, test_auc
+                if min_val_loss > val_loss:
+                    min_val_loss, best_performance = val_loss, val_auc
                     self.space.keep_prediction()
 
-                # bar.set_postfix(train_acc=train_acc, val_acc=valid_acc)
-                bar.set_postfix(
-                    {"train_acc": train_auc, "val_auc": valid_auc, "test_auc": test_auc}
-                )
-                # bar.set_postfix(train_auc=train_auc, val_auc=valid_auc)
-                # print("acc:" + str(train_acc) + " val_acc" + str(val_acc))
+                bar.set_postfix(train_auc=train_auc, val_auc=val_auc)
+                # bar.set_postfix(
+                #     {"train_acc": train_auc, "val_auc": val_auc, "test_auc": test_auc}
+                # )
 
         return best_performance, min_val_loss
 
