@@ -143,3 +143,6 @@ dmypy.json
 
 # ours
 /AutoGL
+
+# ogb dataset
+ogb/
