@@ -1,6 +1,3 @@
-import os
-
-os.environ["AUTOGL_BACKEND"] = "pyg"
 import yaml
 import random
 import numpy as np
