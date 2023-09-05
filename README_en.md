@@ -12,13 +12,12 @@ Feel free to open <a href="https://www.gitlink.org.cn/THUMNLab/AutoGL-light/issu
 
 
 ## News!
-- We have released the first version 0.1.0! We support Hyper-parameter Optimization (HPO) and Neural Architecture Search (NAS). We also provide showcases for using graph machine learning for bioinformatics.
+- We have released the first version 0.1.0! 
+    - We support Hyper-parameter Optimization (HPO) and Neural Architecture Search (NAS). 
+    - We also provide showcases for using graph machine learning for bioinformatics.
 	
 ## Introduction
- Our autogl-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, autogl-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect autogl-light to be more user-friendly, especially for new users. 
-
-
-我们的autogl-light开源库服务于自动图学习，其中包含图超参数优化和图神经网络架构搜索两个功能。我们的库支持使用不同的图机器学习库作为后端。目前，我们主要支持以PyTorch Geometric库作为后端。相比autogl，autogllight没有要求使用某种固定的流水线模式。您可以在您的框架流程的任意步骤中自由地添加图超参数搜索和图神经网络架构搜索来辅助机器学习任务。
+ Our autogl-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, autogl-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect autogl-light to be more user-friendly, especially for new users. 。
                                         
 ### Graph Hyper-parameter Optimization                                        
 Graph HPO aims to automatically optimize the hyperparameters of models in graph machine learning. Currently, we support algorithms such as Grid, Random, Anneal, Bayes, CAMES, MOCAMES, Quasi random, TPE, and AutoNE for hyperparameter optimization. For more details, please refer to XXX.              
