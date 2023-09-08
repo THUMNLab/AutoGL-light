@@ -1,6 +1,9 @@
 # "Large-Scale Graph Neural Architecture Search" ICML 22'
 
+import random
+
 import torch
+import torch.nn.functional as F
 from tqdm import trange
 
 from ..estimator.base import BaseEstimator
@@ -22,105 +25,121 @@ class Gauss(BaseNAS):
 
     def __init__(
         self,
-        num_epochs=250,
+        num_epochs=100,
         device="auto",
         disable_progress=False,
         args=None,
     ):
         super().__init__(device=device)
+        self.device = device
         self.num_epochs = num_epochs
         self.disable_progress = disable_progress
         self.args = args
 
+    def prepare(self, data):
+        self.data = data
+        # fix random seed of train/val/test split
+        random.seed(2022)
+        masks = list(range(data.num_nodes))
+        random.shuffle(masks)
+        fold = int(data.num_nodes * 0.1)
+        train_idx = masks[:fold * 6]
+        val_idx = masks[fold * 6: fold * 8]
+        test_idx = masks[fold * 8:]
+        split_idx = {
+            'train': torch.tensor(train_idx).long(),
+            'valid': torch.tensor(val_idx).long(),
+            'test': torch.tensor(test_idx).long()
+        }
+
+        for key in split_idx: split_idx[key] = split_idx[key].to(self.device)
+
+        self.train_idx = split_idx['train'].to(self.device)
+        self.valid_idx = split_idx['valid'].to(self.device)
+        self.test_idx = split_idx['test'].to(self.device)
+
     def train_graph(
         self,
-        model_optimizer,
-        arch_optimizer,
-        gnn0_optimizer,
-        eta,
+        optimizer,
+        epoch
     ):
         self.space.train()
 
-        for id, train_data in enumerate(self.train_loader):
-            model_optimizer.zero_grad()
-            arch_optimizer.zero_grad()
-            gnn0_optimizer.zero_grad()
-            train_data = train_data.to(self.device)
+        optimizer.zero_grad()
+        archs = self.space.sampler.samples(self.args.repeat)
 
-            output0, output, cosloss, sslout = self.space(train_data)
-            output0 = output0.to(self.device)
-            output = output.to(self.device)
+        if self.args.use_curriculum:
+            judgement = None
+            best_acc = 0
+            if epoch < self.args.warm_up:
+                # min_ratio = args.min_ratio[0]
+                min_ratio = epoch / self.args.epochs * (self.args.min_ratio[1] - self.args.min_ratio[0]) + self.args.min_ratio[0]
+            else:
+                min_ratio = epoch / self.args.epochs * (self.args.min_ratio[1] - self.args.min_ratio[0]) + self.args.min_ratio[0]
+                # min_ratio = args.min_ratio[1]
+                archs = sorted(archs, key=lambda x:x[1])
 
-            is_labeled = train_data.y == train_data.y
-            error_loss0 = self.criterion(
-                output0.to(torch.float32)[is_labeled],
-                train_data.y.to(torch.float32)[is_labeled],
-            )
-            error_loss = self.criterion(
-                output.to(torch.float32)[is_labeled],
-                train_data.y.to(torch.float32)[is_labeled],
-            )
+        for arch, score in archs:
+            ratio = score if self.args.no_baseline else 1.
+            out = self.model(self.data, arch)[self.train_idx]
 
-            ssltarget = train_data.deratio.view(-1, 3)
-            ssllossfun = torch.nn.L1Loss()
-            sslloss = ssllossfun(sslout, ssltarget)
+            if self.args.min_clip > 0:
+                ratio = max(ratio, self.args.min_clip)
+            if self.args.max_clip > 0:
+                ratio = min(ratio, self.args.max_clip)
 
-            my_loss = (1 - eta) * (
-                error_loss0 + self.args.gamma * sslloss + self.args.beta * cosloss
-            ) + eta * error_loss
+            loss = F.nll_loss(out, self.data.y[self.train_idx], reduction="none") / self.args.repeat * ratio
 
-            my_loss.backward()
-            model_optimizer.step()
-            gnn0_optimizer.step()
-            arch_optimizer.step()
+            aggrement = (out.argmax(dim=1) == self.data.y[self.train_idx])
+            cur_acc = aggrement.float().mean()
+            if self.args.use_curriculum and (judgement is None or cur_acc > best_acc):
+                # cal the judgement
+                judgement = torch.ones_like(loss).float()
+                bar = 1 / self.space.num_classes
+                wrong_idxs = (~aggrement).nonzero()[:, 0] # .squeeze()
+                # pass by the bar
+                distributions = torch.exp(out)
+                try:
+                    wrong_idxs = wrong_idxs[distributions[wrong_idxs].max(dim=1)[0] > min(5 * bar, 0.7)]
+                except:
+                    import pdb
+                    pdb.set_trace()
+                sorted_idxs = distributions[wrong_idxs].max(dim=1)[0].sort(descending=True)[1][:int(self.args.max_ratio * out.size(0))]
+                wrong_idxs = wrong_idxs[sorted_idxs]
 
-    def _infer(self, mask="train"):
-        if mask == "train":
-            dataloader = self.train_loader
-        elif mask == "val":
-            dataloader = self.val_loader
-        elif mask == "test":
-            dataloader = self.test_loader
-        metric, loss = self.estimator.infer(self.space, dataloader)
-        return metric, loss
+                if min_ratio < 0:
+                    judgement = judgement.bool()
+                    judgement[wrong_idxs] = False
+                else:
+                    judgement[wrong_idxs] = min_ratio
 
-    def prepare(self, data):
-        """
-        data : list of data objects.
-            [dataset, train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader]
-        """
-        self.train_loader = data[4]
-        self.val_loader = data[5]
-        self.test_loader = data[6]
+                loss = loss.mean()
+                best_acc = cur_acc
+            else:
+                if not self.args.use_curriculum:
+                    loss = loss.mean()
+                else:
+                    if min_ratio < 0: loss = loss[judgement].mean()
+                    else: loss = (loss * judgement).mean()
+
+            loss.backward()
+        optimizer.step()
+
+        return loss.item(), cur_acc.item()
+
+    # def _infer(self, mask="train"):
+    #     if mask == "train":
+    #         dataloader = self.train_loader
+    #     elif mask == "val":
+    #         dataloader = self.val_loader
+    #     elif mask == "test":
+    #         dataloader = self.test_loader
+    #     metric, loss = self.estimator.infer(self.space, dataloader)
+    #     return metric, loss
 
     def fit(self):
-        optimizer = torch.optim.Adam(
-            self.space.supernet.parameters(),
-            self.args.learning_rate,
-            weight_decay=self.args.weight_decay,
-        )
-        arch_optimizer = torch.optim.Adam(
-            self.space.ag.parameters(),
-            self.args.arch_learning_rate,
-            weight_decay=self.args.arch_weight_decay,
-        )
-        gnn0_optimizer = torch.optim.Adam(
-            self.space.supernet0.parameters(),
-            self.args.gnn0_learning_rate,
-            weight_decay=self.args.gnn0_weight_decay,
-        )
-        scheduler_arch = torch.optim.lr_scheduler.CosineAnnealingLR(
-            arch_optimizer,
-            float(self.num_epochs),
-            eta_min=self.args.arch_learning_rate_min,
-        )
-        scheduler_gnn0 = torch.optim.lr_scheduler.CosineAnnealingLR(
-            gnn0_optimizer,
-            float(self.num_epochs),
-            eta_min=self.args.gnn0_learning_rate_min,
-        )
+        optimizer = torch.optim.Adam(self.space.model.parameters(), lr=self.args.lr, weight_decay=self.args.wd)
 
-        self.criterion = torch.nn.BCEWithLogitsLoss()
         eta = self.args.eta
         best_performance = 0
         min_val_loss = float("inf")
@@ -135,43 +154,38 @@ class Gauss(BaseNAS):
                     self.args.eta_max - self.args.eta
                 ) * epoch / self.num_epochs + self.args.eta
                 optimizer.zero_grad()
-                arch_optimizer.zero_grad()
-                gnn0_optimizer.zero_grad()
 
-                self.train_graph(
+                train_loss, train_acc = self.train_graph(
                     optimizer,
-                    arch_optimizer,
-                    gnn0_optimizer,
-                    eta,
+                    epoch
                 )
-                scheduler_arch.step()
-                scheduler_gnn0.step()
+
 
                 """
                 space evaluation
                 """
                 self.space.eval()
-                train_metric, train_loss = self._infer("train")
-                val_metric, val_loss = self._infer("val")
+                # train_metric, train_loss = self._infer("train")
+                # val_metric, val_loss = self._infer("val")
                 # test_metric, test_loss = self._infer("test")
 
-                if min_val_loss > val_loss:
-                    min_val_loss, best_performance = val_loss, val_metric["auc"]
-                    self.space.keep_prediction()
+                # if min_val_loss > val_loss:
+                #     min_val_loss, best_performance = val_loss, val_metric["auc"]
+                #     self.space.keep_prediction()
 
-                bar.set_postfix(
-                    {
-                        "train_auc": train_metric["auc"],
-                        "val_auc": val_metric["auc"],
-                        # "test_auc": test_metric["auc"],
-                    }
-                )
+                # bar.set_postfix(
+                #     {
+                #         "train_auc": train_metric["auc"],
+                #         "val_auc": val_metric["auc"],
+                #         # "test_auc": test_metric["auc"],
+                #     }
+                # )
 
         return best_performance, min_val_loss
 
-    def search(self, space: BaseSpace, dataset, estimator: BaseEstimator):
+    def search(self, space: BaseSpace, data, estimator: BaseEstimator):
         self.estimator = estimator
         self.space = space.to(self.device)
-        self.prepare(dataset)
+        self.prepare(data)
         perf, val_loss = self.fit()
         return space.parse_model(None)
