@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 import scipy
-from .supernet.ops import uniform_sample
+from .module.ops import uniform_sample
 
 class BaseArchSampler(object):
     def __init__(self, space, num_layers=5):

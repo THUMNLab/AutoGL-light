@@ -1,7 +1,7 @@
 import torch
 import torch_geometric.nn as pygnn
 import torch.nn.functional as F
-from .supernet.conv import Conv
+from .module.conv import Conv
 
 COAUTHOR = [
     'gatv2',

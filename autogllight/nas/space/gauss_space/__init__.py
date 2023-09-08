@@ -1,3 +1,2 @@
-from .supernet import Supernet
+from .supernet import Supernet, COAUTHOR
 from .sampler import RandomSampler, RLSampler
-from .supernet import COAUTHOR

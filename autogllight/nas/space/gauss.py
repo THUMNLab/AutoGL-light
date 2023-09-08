@@ -3,7 +3,7 @@ from .gauss_space import COAUTHOR, RandomSampler, RLSampler, Supernet
 
 
 class GaussSpace(BaseSpace):
-    def __init__(self, input_dim, output_dim, add_pre, criterion, args):
+    def __init__(self, input_dim, output_dim, add_pre, args):
         super().__init__()
         self.num_layers = args.num_layers
         self.n_input = input_dim  # data.x.size(-1)
@@ -13,7 +13,6 @@ class GaussSpace(BaseSpace):
         self.track = args.track
         self.add_pre = add_pre
 
-        self.criterion = criterion
         self.args = args
         self.use_forward = True
 
