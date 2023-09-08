@@ -1,0 +1,5 @@
+This example is an experimental case that combines the GNNUQ model (https://github.com/zavalab/ML/tree/master/AUTOGNNUQ/gnn_uq) with the AutoGL framework. Its essence lies in using the Neural Architecture Search (NAS) functionality provided by the AutoGL framework to search for improved architectural strategies for the GNNUQ model within the context of graph neural networks.
+
+To successfully run this model, it is necessary to refer to the README of the original GNNUQ model for data downloading and environment setup. The data source can be found at https://drive.google.com/drive/folders/1lTG0aoY68D_yYBB7FCDlxpgmvPZbjW0u. After completing the preparation of data and environment, you can directly execute the NAS search for the GNNUQ model by running the train.py file.
+
+Compared to the original GNNUQ model, this example primarily introduces the NAS structure onto the existing code, with the overall workflow following the node_clf_nas.py file in the basic example.
