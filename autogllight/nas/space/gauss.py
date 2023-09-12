@@ -6,21 +6,21 @@ class GaussSpace(BaseSpace):
     def __init__(self, input_dim, output_dim, add_pre, args):
         super().__init__()
         self.num_layers = args.num_layers
-        self.n_input = input_dim  # data.x.size(-1)
-        self.num_classes = output_dim  # num_classes, dataset.num_classes
+        self.input_dim = input_dim  # data.x.size(-1)
+        self.output_dim = output_dim  # num_classes, dataset.num_classes
+        self.num_classes = output_dim
         self.hidden_channels = args.hidden_channels
         self.dropout = args.dropout
         self.track = args.track
         self.add_pre = add_pre
-
         self.args = args
         self.use_forward = True
 
     def build_graph(self):
         self.model = Supernet(
             self.num_layers,
-            self.n_input,
-            self.num_classes,
+            self.input_dim,
+            self.output_dim,
             self.hidden_channels,
             self.dropout,
             track=self.track,
@@ -45,10 +45,8 @@ class GaussSpace(BaseSpace):
             return self.prediction
 
         pred = self.model(data, arch)
-
         self.current_pred = pred
         return pred
-        # return pred0, pred, cosloss, sslout
 
     def keep_prediction(self):
         self.prediction = self.current_pred

@@ -37,7 +37,7 @@ class Gauss(BaseNAS):
         self.args = args
 
     def prepare(self, data):
-        self.data = data
+        self.data = data.to(self.device)
         # fix random seed of train/val/test split
         random.seed(2022)
         masks = list(range(data.num_nodes))
@@ -81,7 +81,7 @@ class Gauss(BaseNAS):
 
         for arch, score in archs:
             ratio = score if self.args.no_baseline else 1.
-            out = self.model(self.data, arch)[self.train_idx]
+            out = self.space.model(self.data, arch)[self.train_idx]
 
             if self.args.min_clip > 0:
                 ratio = max(ratio, self.args.min_clip)
@@ -127,20 +127,22 @@ class Gauss(BaseNAS):
 
         return loss.item(), cur_acc.item()
 
-    # def _infer(self, mask="train"):
-    #     if mask == "train":
-    #         dataloader = self.train_loader
-    #     elif mask == "val":
-    #         dataloader = self.val_loader
-    #     elif mask == "test":
-    #         dataloader = self.test_loader
-    #     metric, loss = self.estimator.infer(self.space, dataloader)
-    #     return metric, loss
+    def _infer(self, mask="train"):
+
+        if mask == "train":
+            mask = self.train_idx
+        elif mask == "valid":
+            mask = self.valid_idx
+        else:
+            mask = self.test_idx
+
+        metric, loss = self.estimator.infer(self.space, self.data, self.args.arch, mask=mask)
+        return metric, loss
 
     def fit(self):
         optimizer = torch.optim.Adam(self.space.model.parameters(), lr=self.args.lr, weight_decay=self.args.wd)
 
-        eta = self.args.eta
+        # eta = self.args.eta
         best_performance = 0
         min_val_loss = float("inf")
 
@@ -150,9 +152,9 @@ class Gauss(BaseNAS):
                 space training
                 """
                 self.space.train()
-                eta = (
-                    self.args.eta_max - self.args.eta
-                ) * epoch / self.num_epochs + self.args.eta
+                # eta = (
+                #     self.args.eta_max - self.args.eta
+                # ) * epoch / self.num_epochs + self.args.eta
                 optimizer.zero_grad()
 
                 train_loss, train_acc = self.train_graph(
@@ -160,26 +162,18 @@ class Gauss(BaseNAS):
                     epoch
                 )
 
-
                 """
                 space evaluation
                 """
                 self.space.eval()
-                # train_metric, train_loss = self._infer("train")
-                # val_metric, val_loss = self._infer("val")
-                # test_metric, test_loss = self._infer("test")
+                train_acc, _ = self._infer("train")
+                val_acc, val_loss = self._infer("val")
 
-                # if min_val_loss > val_loss:
-                #     min_val_loss, best_performance = val_loss, val_metric["auc"]
-                #     self.space.keep_prediction()
+                if min_val_loss > val_loss:
+                    min_val_loss, best_performance = val_loss, val_acc
+                    self.space.keep_prediction()
 
-                # bar.set_postfix(
-                #     {
-                #         "train_auc": train_metric["auc"],
-                #         "val_auc": val_metric["auc"],
-                #         # "test_auc": test_metric["auc"],
-                #     }
-                # )
+                bar.set_postfix(train_acc=train_acc["acc"], val_acc=val_acc["acc"])
 
         return best_performance, min_val_loss
 

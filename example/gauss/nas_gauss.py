@@ -3,11 +3,12 @@ import os
 import sys
 
 import torch
+import torch.nn.functional as F
 import torch_geometric.transforms as T
 from autogllight.nas.algorithm import Gauss
+from autogllight.nas.estimator import OneShotEstimator, TrainScratchEstimator
 from autogllight.nas.space import GaussSpace
 from autogllight.utils import set_seed
-from autogllight.utils.evaluation import Auc
 from torch_geometric.datasets import Coauthor
 
 sys.path.append("..")
@@ -59,6 +60,8 @@ def parser_args():
     parser.add_argument("--max-ratio", type=float, default=0.2)
     parser.add_argument("--min-ratio", type=float, nargs="+", default=[0.2, 1.0])
 
+    parser.add_argument('--archs', type=str, default=str(['gcn'] * 2))
+
     args = parser.parse_args()
     return args
 
@@ -73,9 +76,12 @@ if __name__ == "__main__":
         "T": 100,
         "use_curriculum": True,
         "name": "T100",
-        "dataset": "CS",
+        "dataset": "CS", # or "Physics",
+        "archs": "['ginv2', 'ginv2']"
     }
     args = parser_args()
+
+    args.arch = eval(args.archs)
 
     for k, v in hps.items():
         setattr(args, k, v)
@@ -97,11 +103,25 @@ if __name__ == "__main__":
         args=args,
     )
 
-    # estimator = OneShotOGBEstimator(
-    #     loss_f="binary_cross_entropy_with_logits", evaluation=[Auc()]
-    # )
-
     space.instantiate()
+
+    class MyOneShotEstimator(OneShotEstimator):
+        def infer(self, model, dataset, arch, mask):
+            device = next(model.parameters()).device
+            dataset = dataset.to(device)
+
+            pred = model(dataset, arch)[mask]
+            y = data.y[mask]
+
+            loss = getattr(F, self.loss_f)(pred, y)
+            probs = F.softmax(pred, dim=1).detach().cpu().numpy()
+            y = y.cpu()
+            metrics = {
+                eva.get_eval_name(): eva.evaluate(probs, y) for eva in self.evaluation
+            }
+            return metrics, loss
+
+    estimator = MyOneShotEstimator()
 
     device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
     device = torch.device(device)
