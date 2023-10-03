@@ -162,7 +162,7 @@ class Autogt(BaseNAS):
         models = []
         for ord in range(4):
             sub_name = 'supernet_' + str(ord) + '.pt'
-            models.append(self.space.load_model(self.args, directory + sub_name)[0])
+            models.append(self.space.load_model(directory + sub_name)[0])
 
         information = {}
         population = []
@@ -284,8 +284,9 @@ class Autogt(BaseNAS):
             print("End Hybridization! Use time: {} s".format(end - start))
             return result
 
-        epoch = 0
-        while epoch < self.args.evol_epochs:
+        # epoch = 0
+        # while epoch < self.args.evol_epochs:
+        for epoch in tqdm(range(self.args.evol_epochs)):
             while len(candidates) < self.args.population_num:
                 spa = random.choice([True, False])
                 edg = random.choice([True, False])
@@ -305,7 +306,7 @@ class Autogt(BaseNAS):
                 print('No.{} Top-1 Valid Accuracy = {}, Top-1 Test Accuracy = {}, Parameters = {}'.format(
                     i + 1, information[params]['valid_acc'], information[params]['test_acc_'], params))
 
-            epoch += 1
+            # epoch += 1
             if epoch != self.args.evol_epochs:
                 candidates = get_mutation() + get_hybridization()
 
@@ -339,8 +340,8 @@ class Autogt(BaseNAS):
             edg = int((ord & 2) != 0)
             pma = int((ord & 4) != 0)
             cen = int((ord & 8) != 0)
-            _, optimizer, scheduler = self.space.load_model(self.args, directory + name)
-            for epoch in range(self.args.split_epochs, self.args.end_epochs):
+            _, optimizer, scheduler = self.space.load_model(directory + name)
+            for epoch in tqdm(range(self.args.split_epochs, self.args.end_epochs)):
                 params = self.gen_params(self.args.path, spa, edg, pma, cen)
                 self.train(optimizer, scheduler, params)
             sub_name = 'supernet_' + str(ord) + '.pt'
