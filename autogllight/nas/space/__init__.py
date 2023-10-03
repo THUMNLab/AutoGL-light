@@ -14,6 +14,7 @@ from .nni import DartsLayerChoice, DartsInputChoice
 from .base import BaseSpace
 from .single_path import SinglePathNodeClassificationSpace
 from .gasso import GassoSpace
+from .autogt import AutogtSpace
 from .graph_nas import GraphNasNodeClassificationSpace
 from .graph_nas_macro import GraphNasMacroNodeClassificationSpace
 from .autoattend import AutoAttendNodeClassificationSpace
