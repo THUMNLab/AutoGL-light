@@ -1,16 +1,16 @@
-from argparse import ArgumentParser
 import os
 import sys
+from argparse import ArgumentParser
 
 import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
+from data import get_dataset
+
 from autogllight.nas.algorithm import Autogt
 from autogllight.nas.estimator import OneShotEstimator
 from autogllight.nas.space import AutogtSpace
 from autogllight.utils import set_seed
-
-from data import get_dataset
 
 sys.path.append("..")
 sys.path.append(".")
@@ -107,28 +107,14 @@ if __name__ == "__main__":
     space = AutogtSpace(
         args=args,
     )
-
     space.instantiate()
 
-
-    estimator = MyOneShotEstimator()
-
     # device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # x = torch.Tensor([1, 2, 3])
-
-    # x = x.to(device)
-    # print(x)
-    # print(device)
-    # exit()
     device = torch.device(device)
 
     algo = Autogt(num_epochs=args.epochs, device=device, args=args)
 
-
-
     data = get_dataset(args, args.data_split)
-
+    estimator = MyOneShotEstimator()
     algo.search(space, data, estimator)

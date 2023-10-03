@@ -1,3 +1,5 @@
+import torch
+
 from . import BaseSpace
 from .autogt_space import GraphTransformer
 
@@ -38,6 +40,26 @@ class AutogtSpace(BaseSpace):
             svd_dim=self.args.svd_enc_dim,
             path=self.args.path,
         ).cuda()
+
+
+    def load_model(self, path):
+        self.build_graph()
+        optimizer, lr_scheduler = self.model.configure_optimizers()
+        scheduler = lr_scheduler['scheduler']
+        info = torch.load(path)
+        self.model.load_state_dict(info['model'])
+        optimizer.load_state_dict(info['optimizer'])
+        scheduler.load_state_dict(info['scheduler'])
+        print("Load Successfully!")
+        return self.model, optimizer, scheduler
+
+
+    def save_model(self, optimizer, scheduler, path):
+        print("Saving Model to Path: " + path)
+        torch.save({'model': self.model.state_dict(), 'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict()}, path)
+        print("Save Successfully!")
+
+
 
     def forward(self, data, params):
         if not self.use_forward:
