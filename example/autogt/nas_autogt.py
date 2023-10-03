@@ -64,6 +64,8 @@ def parser_args():
     parser.add_argument('--hybridization_num', type=int, default=20)
     parser.add_argument('--retrain_num', type=int, default=4)
 
+    parser.add_argument('--device', type=int, default=3)
+
     return parent_parser.parse_args()
 
 
@@ -102,8 +104,6 @@ if __name__ == "__main__":
     for k, v in hps.items():
         setattr(args, k, v)
 
-    data = get_dataset(args, args.data_split)
-
     space = AutogtSpace(
         args=args,
     )
@@ -113,7 +113,22 @@ if __name__ == "__main__":
 
     estimator = MyOneShotEstimator()
 
-    device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
+    # device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # x = torch.Tensor([1, 2, 3])
+
+    # x = x.to(device)
+    # print(x)
+    # print(device)
+    # exit()
     device = torch.device(device)
+
     algo = Autogt(num_epochs=args.epochs, device=device, args=args)
+
+
+
+    data = get_dataset(args, args.data_split)
+
     algo.search(space, data, estimator)

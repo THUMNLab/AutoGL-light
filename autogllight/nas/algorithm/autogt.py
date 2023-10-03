@@ -2,6 +2,7 @@
 
 
 import random
+import os
 
 import torch
 import torch.nn.functional as F
@@ -69,27 +70,65 @@ class Autogt(BaseNAS):
         metric, loss = self.estimator.infer(self.space, self.data, self.args.arch, mask=mask)
         return metric, loss
 
+    def get_directory(self):
+        directory = f'./PROTEINS/checkpoints/{self.args.dataset_name}_4/{str(self.args.seed)}/{str(self.args.data_split)}/'
+        return directory
+
+    def load_model(self,
+
+    def save_model(self, optimizer, scheduler, path):
+        print("Saving Model to Path: " + path)
+        torch.save({'model': self.space.model.state_dict(), 'optimizer': optimizer.state_dict(), 'scheduler': scheduler.state_dict()}, path)
+        print("Save Successfully!")
+
     def fit(self):
         optimizer, lr_scheduler = self.space.model.configure_optimizers()
         scheduler = lr_scheduler['scheduler']
         best_performance = 0
         min_val_loss = float("inf")
 
-        with trange(self.num_epochs, disable=self.disable_progress) as bar:
-            for epoch in bar:
-                """
-                space training
-                """
+        for epoch in range(self.args.split_epochs):
+            self.train_supernet(optimizer, scheduler)
 
-                loss = self.train(optimizer, scheduler)
+        # save model
+        directory = self.get_directory()
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        name = 'supernet.pt'
+        self.save_model(optimizer, scheduler, directory + name)
+
+
+        # load model and split
+        for ord in range(4):
+            spa = int((ord & 1) != 0)
+            edg = int((ord & 2) != 0)
+            pma = int((ord & 4) != 0)
+            cen = int((ord & 8) != 0)
+            model, optimizer, scheduler = load_model(args, directory + name)
+            for epoch in range(args.split_epochs, args.end_epochs):
+                params = gen_params(args.path, spa, edg, pma, cen)
+                train(model, train_loader, optimizer, scheduler, params)
+            sub_name = 'supernet_' + str(ord) + '.pt'
+            save_model(model, optimizer, scheduler, directory + sub_name)
 
 
 
-                """
-                space evaluation
-                """
-                continue
+        # with trange(self.num_epochs, disable=self.disable_progress) as bar:
+        #     for epoch in bar:
+        #         """
+        #         space training
+        #         """
 
+        #         loss = self.train(optimizer, scheduler)
+
+
+
+        #         """
+        #         space evaluation
+        #         """
+        #         continue
+        #         self.space.eval()
+        continue
 
                 train_loss, train_acc = self.test(model, train_loader)
                 valid_loss, valid_acc = self.test(model, valid_loader)

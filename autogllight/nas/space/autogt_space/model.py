@@ -1,7 +1,18 @@
+import math
 import json
 import torch
 import random
 import torch.nn as nn
+from .lr_file import PolynomialDecayLR
+
+
+def init_params(module, n_layers):
+    if isinstance(module, nn.Linear):
+        module.weight.data.normal_(mean=0.0, std=0.02 / math.sqrt(n_layers))
+        if module.bias is not None:
+            module.bias.data.zero_()
+    if isinstance(module, nn.Embedding):
+        module.weight.data.normal_(mean=0.0, std=0.02)
 
 
 class GraphTransformer(nn.Module):
