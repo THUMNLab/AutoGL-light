@@ -75,29 +75,29 @@ class Autogt(BaseNAS):
             scheduler.step()
         return total_loss / self.train_loader[0]
 
-    def test(self, data_loader, params=None):
-        self.space.eval()
+    def test(self, model, data_loader, params=None):
+        model.eval()
         total_correct = 0
         total_loss = 0
         for batched_data in data_loader[1:]:
-            out = self.space(batched_data, params).squeeze()
+            out = model(batched_data, params).squeeze()
             total_correct += int(((out > 0.5) == batched_data.y).sum())
             loss = F.binary_cross_entropy_with_logits(out, batched_data.y.view(-1).float())
             total_loss += loss.double() * batched_data.y.shape[0]
         return total_loss / data_loader[0], total_correct / data_loader[0]
 
 
-    def _infer(self, mask="train"):
+    # def _infer(self, mask="train"):
 
-        if mask == "train":
-            mask = self.train_idx
-        elif mask == "valid":
-            mask = self.valid_idx
-        else:
-            mask = self.test_idx
+    #     if mask == "train":
+    #         mask = self.train_idx
+    #     elif mask == "valid":
+    #         mask = self.valid_idx
+    #     else:
+    #         mask = self.test_idx
 
-        metric, loss = self.estimator.infer(self.space, self.data, self.args.arch, mask=mask)
-        return metric, loss
+    #     metric, loss = self.estimator.infer(self.space, self.data, self.args.arch, mask=mask)
+    #     return metric, loss
 
     def gen_params(self, path, spa, edg, pma, cen):
         with open(path, 'r') as f:
@@ -177,8 +177,9 @@ class Autogt(BaseNAS):
             _, test_acc_ = self.test(models[ord], self.test_loader, params)
             info['valid_acc'] = valid_acc
             info['test_acc_'] = test_acc_
-            print('Top-1 Valid Accuracy = {}, Top-1 Test Accuracy = {}, Parameters = {}'.format(
-                valid_acc, test_acc_, params))
+            # print('Top-1 Valid Accuracy = {}, Top-1 Test Accuracy = {}, Parameters = {}'.format(
+            #     valid_acc, test_acc_, params))
+
             information[params] = info
             return True
 
@@ -321,20 +322,18 @@ class Autogt(BaseNAS):
         best_performance = 0
         min_val_loss = float("inf")
 
+        # phase 1: train supernet
         for epoch in tqdm(range(self.args.split_epochs)):
             self.train_supernet(optimizer, scheduler)
 
-        # save model
         directory = self.get_directory()
-        # print('dir: ', directory)
-        # exit()
         if not os.path.exists(directory):
             os.makedirs(directory)
         name = 'supernet.pt'
         self.space.save_model(optimizer, scheduler, directory + name)
 
 
-        # load model and split
+        # phase 2: train subnets
         for ord in range(4):
             spa = int((ord & 1) != 0)
             edg = int((ord & 2) != 0)
@@ -347,64 +346,14 @@ class Autogt(BaseNAS):
             sub_name = 'supernet_' + str(ord) + '.pt'
             self.space.save_model(optimizer, scheduler, directory + sub_name)
 
-        # evolution
+        # phase 3: evolution
         self.evolution(directory)
 
 
-        # with trange(self.num_epochs, disable=self.disable_progress) as bar:
-        #     for epoch in bar:
-        #         """
-        #         space training
-        #         """
-
-        #         loss = self.train(optimizer, scheduler)
-
-
-
-        #         """
-        #         space evaluation
-        #         """
-        #         continue
-        #         self.space.eval()
-
-        #         train_loss, train_acc = self.test(model, train_loader)
-        #         valid_loss, valid_acc = self.test(model, valid_loader)
-        #         test__loss, test_acc_ = self.test(model, test_loader_)
-        #         print("Epoch {: >3}: Train Loss: {:.3f}, Train Acc: {:.2%}, Valid Loss: {:.3f}, Valid Acc: {:.2%}, Test Loss: {:.3f}, Test Acc: {:.2%}".format(epoch, loss, train_acc, valid_loss, valid_acc, test__loss, test_acc_))
-        #         if valid_acc > best_valid:
-        #             best_valid = valid_acc
-        #             best_test_ = test_acc_
-        #             worst_test = test_acc_
-        #         elif valid_acc == best_valid:
-        #             if test_acc_ > best_test_:
-        #                 best_test_ = test_acc_
-        #             elif test_acc_ < worst_test:
-        #                 worst_test = test_acc_
-        #         results[epoch, 0] = train_acc
-        #         results[epoch, 1] = valid_acc
-        #         results[epoch, 2] = test_acc_
-
-
-
-        #         """
-        #         space evaluation
-        #         """
-        #         # self.space.eval()
-        #         # train_acc, _ = self._infer("train")
-        #         # val_acc, val_loss = self._infer("val")
-
-        #         # if min_val_loss > val_loss:
-        #         #     min_val_loss, best_performance = val_loss, val_acc
-        #         #     self.space.keep_prediction()
-
-        #         bar.set_postfix(train_acc=train_acc["acc"], val_acc=val_acc["acc"])
-
-        # return best_performance, min_val_loss
 
     def search(self, space: BaseSpace, data, estimator: BaseEstimator):
         self.estimator = estimator
         self.space = space.to(self.device)
         self.prepare(data)
-        # perf, val_loss = self.fit()
         self.fit()
-        return space.parse_model(None)
+        # return space.parse_model(None)

@@ -68,30 +68,16 @@ def parser_args():
 
     return parent_parser.parse_args()
 
-
-class MyOneShotEstimator(OneShotEstimator):
-    def infer(self, model, dataset, arch, mask):
-        device = next(model.parameters()).device
-        dataset = dataset.to(device)
-
-        pred = model(dataset, arch)[mask]
-        y = data.y[mask]
-
-        loss = getattr(F, self.loss_f)(pred, y)
-        probs = F.softmax(pred, dim=1).detach().cpu().numpy()
-        y = y.cpu()
-        metrics = {
-            eva.get_eval_name(): eva.evaluate(probs, y) for eva in self.evaluation
-        }
-        return metrics, loss
-
 if __name__ == "__main__":
     set_seed(0)
     hps = {
         "batch_size": 48,
         "max_node": 512,
-        "split_epochs": 50,
-        "end_epochs":200,
+        # "split_epochs": 50,
+        # "end_epochs":200,
+        # test
+        "split_epochs": 2,
+        "end_epochs":4,
         "warmup_updates": 600,
         "tot_updates": 5000,
         "n_layers": 4,
@@ -116,5 +102,5 @@ if __name__ == "__main__":
     algo = Autogt(num_epochs=args.epochs, device=device, args=args)
 
     data = get_dataset(args, args.data_split)
-    estimator = MyOneShotEstimator()
+    estimator = None
     algo.search(space, data, estimator)
