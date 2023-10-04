@@ -184,8 +184,8 @@ class Autogt(BaseNAS):
             return True
 
         def get_mutation():
-            start = time.time()
-            print('Start Mutation!')
+            # start = time.time()
+            # print('Start Mutation!')
             result = []
 
             def random_function():
@@ -243,13 +243,13 @@ class Autogt(BaseNAS):
                     continue
                 result.append(params)
 
-            end = time.time()
-            print("End Mutation! Use time: {} s".format(end - start))
+            # end = time.time()
+            # print("End Mutation! Use time: {} s".format(end - start))
             return result
 
         def get_hybridization():
-            start = time.time()
-            print('Start Hybridization!')
+            # start = time.time()
+            # print('Start Hybridization!')
             result = []
 
             def random_function():
@@ -281,38 +281,44 @@ class Autogt(BaseNAS):
                     continue
                 result.append(params)
 
-            end = time.time()
-            print("End Hybridization! Use time: {} s".format(end - start))
+            # end = time.time()
+            # print("End Hybridization! Use time: {} s".format(end - start))
             return result
 
-        # epoch = 0
-        # while epoch < self.args.evol_epochs:
-        for epoch in tqdm(range(self.args.evol_epochs)):
-            while len(candidates) < self.args.population_num:
-                spa = random.choice([True, False])
-                edg = random.choice([True, False])
-                pma = random.choice([True, False])
-                cen = random.choice([True, False])
-                params = self.gen_params(self.args.path, spa, edg, pma, cen)
-                if not is_legal(params):
-                    continue
-                candidates.append(params)
 
-            population += candidates
-            population.sort(key=lambda x: information[x]['valid_acc'], reverse=True)
-            population = population[:self.args.population_num]
+        # print("Evolution Started!")
 
-            print('epoch = {} : top {} result'.format(epoch, len(population)))
-            for i, params in enumerate(population):
-                print('No.{} Top-1 Valid Accuracy = {}, Top-1 Test Accuracy = {}, Parameters = {}'.format(
-                    i + 1, information[params]['valid_acc'], information[params]['test_acc_'], params))
+        with trange(self.args.evol_epochs) as bar:
+            for epoch in bar:
+            # for epoch in tqdm(range(self.args.evol_epochs)):
+                while len(candidates) < self.args.population_num:
+                    spa = random.choice([True, False])
+                    edg = random.choice([True, False])
+                    pma = random.choice([True, False])
+                    cen = random.choice([True, False])
+                    params = self.gen_params(self.args.path, spa, edg, pma, cen)
+                    if not is_legal(params):
+                        continue
+                    candidates.append(params)
 
-            # epoch += 1
-            if epoch != self.args.evol_epochs:
+                population += candidates
+                population.sort(key=lambda x: information[x]['valid_acc'], reverse=True)
+                population = population[:self.args.population_num]
+
+                best_valid = information[population[0]]['valid_acc']
+                best_test = information[population[0]]['test_acc_']
+                bar.set_postfix(epoch=epoch, val_acc=best_valid, test_acc=best_test)
+
+                # print('epoch = {} : top {} result'.format(epoch, len(population)))
+                # for i, params in enumerate(population):
+                #     print('No.{} Top-1 Valid Accuracy = {}, Top-1 Test Accuracy = {}, Parameters = {}'.format(
+                #         i + 1, information[params]['valid_acc'], information[params]['test_acc_'], params))
+
+                # evolution
                 candidates = get_mutation() + get_hybridization()
 
-        end = time.time()
-        print("Evolution Ended! Use time: {} s".format(end - start))
+        # end = time.time()
+        # print("Evolution Ended! Use time: {} s".format(end - start))
 
 
 
@@ -322,7 +328,7 @@ class Autogt(BaseNAS):
         best_performance = 0
         min_val_loss = float("inf")
 
-        # phase 1: train supernet
+        print('=> Phase 1: train supernet')
         for epoch in tqdm(range(self.args.split_epochs)):
             self.train_supernet(optimizer, scheduler)
 
@@ -333,7 +339,7 @@ class Autogt(BaseNAS):
         self.space.save_model(optimizer, scheduler, directory + name)
 
 
-        # phase 2: train subnets
+        print('=> Phase 2: train subnets')
         for ord in range(4):
             spa = int((ord & 1) != 0)
             edg = int((ord & 2) != 0)
@@ -346,7 +352,7 @@ class Autogt(BaseNAS):
             sub_name = 'supernet_' + str(ord) + '.pt'
             self.space.save_model(optimizer, scheduler, directory + sub_name)
 
-        # phase 3: evolution
+        print('=> Phase 3: evolution')
         self.evolution(directory)
 
 

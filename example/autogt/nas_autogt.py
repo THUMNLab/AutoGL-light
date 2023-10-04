@@ -73,11 +73,11 @@ if __name__ == "__main__":
     hps = {
         "batch_size": 48,
         "max_node": 512,
-        # "split_epochs": 50,
-        # "end_epochs":200,
-        # test
-        "split_epochs": 2,
-        "end_epochs":4,
+        "split_epochs": 50,
+        "end_epochs":200,
+        # debug
+        # "split_epochs": 2,
+        # "end_epochs":4,
         "warmup_updates": 600,
         "tot_updates": 5000,
         "n_layers": 4,
