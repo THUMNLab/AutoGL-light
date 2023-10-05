@@ -75,9 +75,6 @@ if __name__ == "__main__":
         "max_node": 512,
         "split_epochs": 50,
         "end_epochs":200,
-        # debug
-        # "split_epochs": 2,
-        # "end_epochs":4,
         "warmup_updates": 600,
         "tot_updates": 5000,
         "n_layers": 4,
