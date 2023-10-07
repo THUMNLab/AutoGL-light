@@ -8,3 +8,4 @@ from .grna import GRNA
 from .gasso import Gasso
 from .graces import Graces
 from .gauss import Gauss
+from .autogt import Autogt
