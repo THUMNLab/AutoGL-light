@@ -15,6 +15,7 @@ from .base import BaseSpace
 from .single_path import SinglePathNodeClassificationSpace
 from .gasso import GassoSpace
 from .graces import GracesSpace
+from .gauss import GaussSpace
 from .graph_nas import GraphNasNodeClassificationSpace
 from .graph_nas_macro import GraphNasMacroNodeClassificationSpace
 from .autoattend import AutoAttendNodeClassificationSpace

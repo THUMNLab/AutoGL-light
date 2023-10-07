@@ -251,7 +251,7 @@ from torch.nn import Parameter
 
 import torch
 from torch import Tensor
-from ..scatter_utils import *
+# from ..scatter_utils import *
 from typing import Optional, Tuple, Union
 
 OptTensor = Optional[Tensor]
