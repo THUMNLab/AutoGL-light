@@ -13,24 +13,23 @@ Feel free to open <a href="https://www.gitlink.org.cn/THUMNLab/AutoGL-light/issu
 
 ## News!
 - We have released the first version 0.1.0! 
-    - We support Hyper-parameter Optimization (HPO) and Neural Architecture Search (NAS). 
+    - We support Hyper-parameter Optimization (HPO) and Neural Architecture Search (NAS) with flexible pipelines! 
     - We also provide showcases for using graph machine learning for bioinformatics.
 	
 ## Introduction
- Our autogl-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, autogl-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect autogl-light to be more user-friendly, especially for new users. 。
+ Our autogl-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, autogl-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect autogl-light to be more user-friendly, especially for new users. 
                                         
 ### Graph Hyper-parameter Optimization                                        
-Graph HPO aims to automatically optimize the hyperparameters of models in graph machine learning. Currently, we support algorithms such as Grid, Random, Anneal, Bayes, CAMES, MOCAMES, Quasi random, TPE, and AutoNE for hyperparameter optimization. For more details, please refer to XXX.              
+Graph HPO aims to automatically optimize the hyperparameters of models in graph machine learning. Currently, we support algorithms such as Grid, Random, Anneal, Bayes, CAMES, MOCAMES, Quasi random, TPE, and AutoNE for hyperparameter optimization. For more details, please refer to [HPO documentations](http://mn.cs.tsinghua.edu.cn/AutoGL-light/docfile/tutorial/t_hpo.html).        
                                         
 ### Graph Neural Architecture Search                                        
-Graph NAS aims to automatically design and optimize neural network architectures for graph machine learning. It searches for the optimal architecture within a given search space. Currently, we support search algorithms including Random, RL, EA, ENAS, SPOS, GraphNAS, DARTS, GRNA, GASSO, and GRACES. For more details, please refer to XXX.
+Graph NAS aims to automatically design and optimize neural network architectures for graph machine learning. It searches for the optimal architecture within a given search space. Currently, we support search algorithms including Random, RL, EA, ENAS, SPOS, GraphNAS, DARTS, GRNA, GASSO, and GRACES. For more details, please refer to [NAS documentations](http://mn.cs.tsinghua.edu.cn/AutoGL-light/docfile/tutorial/t_nas.html).
                                         
 ## Applications
-To promote and showcase the usage of autogl-light, particularly in handlying various downstream graph tasks, we have included examples of applying autogl-light to bioinformatics using graph HPO and graph NAS. For more information, please refer to XXX.
+To promote and showcase the usage of autogl-light, particularly in handlying various downstream graph tasks, we have included examples of applying autogl-light to bioinformatics using graph HPO and graph NAS, including [ScGNN](https://www.nature.com/articles/s41467-021-22197-x), [MolCLR](https://www.nature.com/articles/s42256-022-00447-x), and [AutoGNNUQ](https://arxiv.org/abs/2307.10438). Please refer to [example files](https://gitlink.org.cn/THUMNLab/AutoGL-light/tree/main/example).
 
 ## Installation
 ### Requirements
-
 Please make sure you meet the following requirements before installing AutoGL.
 
 1. Python >= 3.6.0
@@ -69,7 +68,6 @@ pip install -e .
 
 
 ## Cite
-
 Please cite [our paper](https://openreview.net/forum?id=0yHwpLeInDn) as follows if you find our code useful:
 ```
 @inproceedings{guan2021autogl,
