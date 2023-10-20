@@ -6,7 +6,6 @@ import random
 import time
 
 import numpy as np
-# from autogl.backend import DependentBackend
 from tqdm import trange
 
 # from ..feature import NetLSD as SgNetLSD

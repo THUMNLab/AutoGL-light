@@ -62,7 +62,7 @@ def _generate_backend_config() -> _BackendConfig:
         elif name.lower() not in ("dgl", "pyg"):
             __warning_message = " ".join(
                 (
-                    "The environment variable AUTOGL_BACKEND specified",
+                    "The environment specified",
                     'but is neither "dgl" nor "pyg",',
                     "thus the environment variable is ignored",
                     "and dependent backend for AutoGL is set automatically",
@@ -112,12 +112,6 @@ def _generate_backend_config() -> _BackendConfig:
                 raise ModuleNotFoundError("Neither DGL nor PyTorch-Geometric exists")
         else:
             return _generate_by_name()
-
-    if "AUTOGL_BACKEND" in os.environ:
-        return _generate_by_name(os.getenv("AUTOGL_BACKEND"))
-    else:
-        return _generate_by_name()
-
 
 class _DependentBackendMetaclass(type):
     """

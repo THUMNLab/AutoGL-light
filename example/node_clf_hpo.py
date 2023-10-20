@@ -151,7 +151,7 @@ def do_hpo():
         trainer.train()
         result = trainer.evaluate()
         print("acc", result)
-        # high is better
+        # higher is better
         return -result
 
     hp_space = [
