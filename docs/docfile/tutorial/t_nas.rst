@@ -3,12 +3,12 @@
 Neural Architecture Search
 ============================
 
-We support different neural architecture search algorithm in variant search space.
-Neural architecture search is usually constructed by three modules: search space, search strategy and estimation strategy.
+We support different neural architecture search algorithms in variant search space.
+Neural architecture search is usually constructed by three modules: search space, search strategy, and estimation strategy.
 
-The search space describes all possible architectures to be searched. There are mainly two parts of the space formulated, the operations(e.g. GCNconv, GATconv) and the input-ouput relations.
+The search space describes all possible architectures to be searched. There are mainly two parts of the space formulated, the operations(e.g. GCNconv, GATconv) and the input-output relations.
 A large space may have better optimal architecture but demands more effect to explore.
-Human knowledge can help to design a reasonable search space to reduce the efforts of search strategy.
+Human knowledge can help to design a reasonable search space to reduce the efforts of the search strategy.
 
 The search strategy controls how to explore the search space. 
 It encompasses the classical exploration-exploitation trade-off since.
@@ -17,18 +17,19 @@ while on the other hand, premature convergence to a region of suboptimal archite
 
 The estimation strategy gives the performance of certain architectures when it is explored.
 The simplest option is to perform a standard training and validation of the architecture on data.
-Since there are lots of architectures need estimating in the whole searching process, estimation strategy is desired to be very efficient to save computational resources.
+Since there are lots of architectures that need estimating in the whole search process, the estimation strategy is desired to be very efficient to save computational resources.
 
-To be more flexible, we modulize NAS process with three part: algorithm, space and estimator, corresponding to the three module search space, search strategy and estimation strategy.
-Different models in different parts can be composed in some certain constrains.
+To be more flexible, we modulize the NAS process with three parts: algorithm, space, and estimator, corresponding to the three module search space, search strategy, and estimation strategy.
+Different models in different parts can be composed under certain constraints.
 If you want to design your own NAS process, you can change any of those parts according to your demand.
 
 Usage
 -----
 
-You can directly import specfici space, algorithm, estimators to search gnns for specific datasets. Following shows an example:
+You can directly import specific space, algorithms, and estimators to search gnns for specific datasets. The following shows an example:
 
 .. code-block:: python
+
     from autogllight.nas.space import GraphNasNodeClassificationSpace
     from autogllight.nas.algorithm import GraphNasRL
     from autogllight.nas.estimator import OneShotEstimator
@@ -57,9 +58,9 @@ The code above will first find the best architecture in space ``GraphNasNodeClas
 Search Space
 ------------
 
-The space definition is base on mutable fashion used in NNI, which is defined as a model inheriting BaseSpace
-There are mainly two ways to define your search space, one can be performed with one-shot fashion while the other cannot.
-Currently, we support following search space: SinglePathNodeClassificationSpace, GassoSpace, GraphNasNodeClassificationSpace, GraphNasMacroNodeClassificationSpace,AutoAttendNodeClassificationSpace.
+The space definition is based on mutable fashion used in NNI, which is defined as a model inheriting BaseSpace
+There are mainly two ways to define your search space, one can be performed in one-shot fashion while the other cannot.
+Currently, we support the following search space: SinglePathNodeClassificationSpace, GassoSpace, GraphNasNodeClassificationSpace, GraphNasMacroNodeClassificationSpace,AutoAttendNodeClassificationSpace.
 
 You can also define your own nas search space. You should overwrite the function ``build_graph`` to construct the super network.
 Here is an example.
@@ -68,7 +69,7 @@ Here is an example.
 
     from autogllight.space.base import BaseSpace
 
-    # For example, create an NAS search space by yourself
+    # For example, create a NAS search space by yourself
     class SinglePathNodeClassificationSpace(BaseSpace):
     def __init__(
         self,
@@ -113,7 +114,7 @@ Here is an example.
 Performance Estimator
 ---------------------
 
-The performance estimator estimates the performance of an architecture. Currently we support following estimators:
+The performance estimator estimates the performance of an architecture. Currently, we support the following estimators:
 
 +-------------------------+-------------------------------------------------------+
 | Estimator               | Description                                           |
@@ -127,7 +128,7 @@ You can also write your own estimator. Here is an example of estimating an archi
 
 .. code-block:: python
 
-    # For example, create an NAS estimator by yourself
+    # For example, create a NAS estimator by yourself
     from autogllight.nas.estimator.base import BaseEstimator
     class YourOneShotEstimator(BaseEstimator):
         # The only thing you should do is defining ``infer`` function
@@ -146,7 +147,7 @@ You can also write your own estimator. Here is an example of estimating an archi
 Search Strategy
 ---------------
 
-The space strategy defines how to find an architecture. We currently support following search strategies:RandomSearch, Darts, RL, GraphNasRL, Enas, Spos, GRNA, Gasso.
+The space strategy defines how to find an architecture. We currently support the following search strategies:RandomSearch, Darts, RL, GraphNasRL, Enas, Spos, GRNA, and Gasso.
 
 
 Sample-based strategy without weight sharing is simpler than strategies with weight sharing.
@@ -161,7 +162,7 @@ We show how to define your strategy here with DFS as an example.
             super().__init__()
             self.n_sample = n_sample
 
-        # The key process in NAS algorithm, search for an architecture given space, dataset and estimator
+        # The key process in the NAS algorithm is, search for an architecture given space, dataset and estimator
         def search(self, space: BaseSpace, dset, estimator):
             self.estimator=estimator
             self.dataset=dset
@@ -174,7 +175,7 @@ We show how to define your strategy here with DFS as an example.
             replace_input_choice(self.space, PathSamplingInputChoice, self.nas_modules)
             # sort all mutables with given orders
             self.nas_modules = sort_replaced_module(k2o, self.nas_modules) 
-            # get a dict cantaining all chioces
+            # get a dict containing all choices
             selection_range={}
             for k,v in self.nas_modules:
                 selection_range[k]=len(v)

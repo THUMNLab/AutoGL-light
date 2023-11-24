@@ -44,6 +44,7 @@ Install from pip & conda
 Run the following command to install this package through `pip`.
 
 .. code-block:: shell
+
    pip install autogl-light
 
 
@@ -53,6 +54,7 @@ Install from source
 Run the following command to install this package from the source.
 
 .. code-block:: shell
+
    git clone https://www.gitlink.org.cn/THUMNLab/AutoGL-light.git
    cd AutoGL-light
    python setup.py install
@@ -64,6 +66,7 @@ Install for development
 If you are a developer of the AutoGL-light project, please use the following command to create a soft link, then you can modify the local package without install them again.
 
 .. code-block:: shell
+   
    pip install -e .
 
 

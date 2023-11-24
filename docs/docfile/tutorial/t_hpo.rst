@@ -24,6 +24,7 @@ We support three types of search space as follows:
 In addition, users can also create their own search space by inheriting ``HPSpace``. The search space should be combined as a list:
 
 .. code-block:: python
+
     space = [
         LogRangeHP("lr", 0.001, 0.1),
         ChoiceHP("opti", ["adam", "sgd"]),
@@ -58,6 +59,7 @@ The following table lists the HPO algorithms we support and the search spaces th
 We use HPOptimizer as follows:
 
 .. code-block:: python
+    
     def f(hps: dict, dataset=None):
         # return the result of evaluating the given hps on the given dataset
         ...

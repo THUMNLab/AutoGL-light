@@ -23,6 +23,7 @@
 此外，用户还可以通过继承``HPSpace``来创建自己的搜索空间。搜索空间需要通过列表进行组合：
 
 .. code-block:: python
+
     space = [
         LogRangeHP("lr", 0.001, 0.1),
         ChoiceHP("opti", ["adam", "sgd"]),
@@ -58,6 +59,7 @@
 我们使用如下方式使用超参数优化器：
 
 .. code-block:: python
+    
     def f(hps: dict, dataset=None):
         # return the result of evaluating the given hps on the given dataset
         ...

@@ -30,6 +30,7 @@
 你可以直接引入特定的空间、算法、估计器来为特定的数据集搜索图神经网络。下面是一个例子：
 
 .. code-block:: python
+    
     from autogllight.nas.space import GraphNasNodeClassificationSpace
     from autogllight.nas.algorithm import GraphNasRL
     from autogllight.nas.estimator import OneShotEstimator
