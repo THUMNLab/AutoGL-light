@@ -13,13 +13,13 @@ This is an extended package of `PyTorch <https://github.com/THUMNLab/AutoGL/>`_ 
 Introduction
 -----------
 
-Our autogl-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, autogl-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect autogl-light to be more user-friendly, especially for new users. 
+Our AutoGL-light library aims to serve automated graph machine learning and currently includes two main functionalities: graph hyperparameter optimization (HPO) and graph neural network architecture search (NAS). We plan to make this library compatible with various graph machine learning libraries as backends, but currently, we primarily support PyTorch Geometric. Compared to AutoGL, AutoGL-light does not fix the pipeline, i.e., it allows to freely incorporate graph HPO and graph NAS at any step of the workflow. We also expect AutoGL-light to be more user-friendly, especially for new users. 
 
 Graph HPO aims to automatically optimize the hyperparameters of models in graph machine learning. Currently, we support algorithms such as Grid, Random, Anneal, Bayes, CAMES, MOCAMES, Quasi random, TPE, and AutoNE for hyperparameter optimization. For more details, please refer to `HPO documentations <http://mn.cs.tsinghua.edu.cn/AutoGL-light/docfile/tutorial/t_hpo.html>`_ .
 
 Graph NAS aims to automatically design and optimize neural network architectures for graph machine learning. It searches for the optimal architecture within a given search space. Currently, we support search algorithms including Random, RL, EA, ENAS, SPOS, GraphNAS, DARTS, GRNA, GASSO, and GRACES. For more details, please refer to `NAS documentations <http://mn.cs.tsinghua.edu.cn/AutoGL-light/docfile/tutorial/t_nas.html>`_ .
 
-To promote and showcase the usage of autogl-light, particularly in handlying various downstream graph tasks, we have included examples of applying autogl-light to bioinformatics using graph HPO and graph NAS, including `ScGNN <https://www.nature.com/articles/s41467-021-22197-x>`_ , `MolCLR <https://www.nature.com/articles/s42256-022-00447-x>`_ ,and `AutoGNNUQ <https://arxiv.org/abs/2307.10438>`_ Please refer to `example files <https://gitlink.org.cn/THUMNLab/AutoGL-light/tree/main/example>`_.
+To promote and showcase the usage of AutoGL-light, particularly in handlying various downstream graph tasks, we have included examples of applying autogl-light to bioinformatics using graph HPO and graph NAS, including `ScGNN <https://www.nature.com/articles/s41467-021-22197-x>`_ , `MolCLR <https://www.nature.com/articles/s42256-022-00447-x>`_ ,and `AutoGNNUQ <https://arxiv.org/abs/2307.10438>`_ Please refer to `example files <https://gitlink.com/THUMNLab/AutoGL-light/tree/main/example>`_.
 
 Installation
 ------------
@@ -55,7 +55,7 @@ Run the following command to install this package from the source.
 
 .. code-block:: shell
 
-   git clone https://www.gitlink.org.cn/THUMNLab/AutoGL-light.git
+   git clone https://github.com/THUMNLab/AutoGL-light.git
    cd AutoGL-light
    python setup.py install
 
@@ -63,7 +63,7 @@ Install for development
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 
-If you are a developer of the AutoGL-light project, please use the following command to create a soft link, then you can modify the local package without install them again.
+If you are a developer of the AutoGL-light project, please use the following command to create a soft link, then you can modify the local package without installing them again.
 
 .. code-block:: shell
    

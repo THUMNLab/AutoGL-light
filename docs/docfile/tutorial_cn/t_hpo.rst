@@ -139,7 +139,7 @@
 
         def optimize(self):
             """Key function. Return the best hp & performance"""
-            # this functino can be omitted if using the default optimize()
+            # this function can be omitted if using the default optimize()
             ...
 
 
