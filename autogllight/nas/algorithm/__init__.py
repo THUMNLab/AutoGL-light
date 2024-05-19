@@ -9,6 +9,7 @@ from .gasso import Gasso
 from .graces import Graces
 from .gauss import Gauss
 from .autogt import Autogt
+from .ctf import CTF
 
 __all__ = [
     "RandomSearch",
@@ -21,5 +22,6 @@ __all__ = [
     "Gasso",
     "Graces",
     "Gauss",
-    "Autogt"
+    "Autogt",
+    "CTF"
 ]
