@@ -20,6 +20,7 @@ from .autogt import AutogtSpace
 from .graph_nas import GraphNasNodeClassificationSpace
 from .graph_nas_macro import GraphNasMacroNodeClassificationSpace
 from .autoattend import AutoAttendNodeClassificationSpace
+from .ctf import CTFSpace
 
 __all__ = [
     "apply_fixed_architecture",
@@ -37,5 +38,6 @@ __all__ = [
     "AutogtSpace",
     "GraphNasNodeClassificationSpace",
     "GraphNasMacroNodeClassificationSpace",
-    "AutoAttendNodeClassificationSpace"
+    "AutoAttendNodeClassificationSpace",
+    "CTFSpace",
 ]

@@ -3,14 +3,14 @@ from torch_scatter import scatter
 from torch_sparse import SparseTensor
 from torch_geometric.utils import add_remaining_self_loops
 from torch_geometric.nn import SAGPooling, TopKPooling,EdgePooling,ASAPooling,dense_diff_pool,LEConv,GINConv,GraphConv,GCNConv
-from torch_geometric.nn.pool.topk_pool import topk, filter_adj
+from torch_geometric.nn.pool.select import topk
+from torch_geometric.nn.pool.connect.filter_edges import filter_adj
 from torch_geometric.nn.conv import MessagePassing
 import torch
 from torch.nn import Linear, Sequential, ReLU,ELU, BatchNorm1d as BN
 from torch_scatter import scatter_add, scatter_max
 from torch_geometric.utils import softmax
 from torch_geometric.nn.inits import reset
-from torch_geometric.nn.pool.topk_pool import topk
 
 class ASAPooling_mix(ASAPooling):
 

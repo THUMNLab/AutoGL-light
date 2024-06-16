@@ -145,3 +145,5 @@ dmypy.json
 /AutoGL
 ogb/
 TU/
+data/
+tmp/
